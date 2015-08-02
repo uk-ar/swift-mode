@@ -70,13 +70,153 @@
 
 (require 'smie)
 
+(defun verbose-swift-smie-rules (kind token)
+  (let ((value (swift-smie-rules kind token)))
+    (message "%s '%s'; sibling-p:%s parent:%s hanging:%s == %s" kind token
+             (ignore-errors (smie-rule-sibling-p))
+             (ignore-errors smie--parent)
+             (ignore-errors (smie-rule-hanging-p))
+             value)
+    value))
+
+(defvar swift-smie--operators-regexp
+  (regexp-opt '("*=" "/=" "%=" "+=" "-=" "<<=" ">>=" "&=" "^=" "|=" "&&=" "||="
+                "<" "<=" ">" ">=" "==" "!=" "===" "!==" "~=" "||" "&&"
+                "is" "as" "as!" "as?" "..<" "..."
+                "+" "-" "&+" "&-" "|" "^"
+                "*" "/" "%" "&*" "&/" "&%" "&"
+                "<<" ">>" "??")))
+
+(defvar swift-smie--decl-specifier-regexp
+  "\\(?1:class\\|mutating\\|override\\|static\\|unowned\\|weak\\)\\(?:[[:space:]]*func\\)")
+
+(defvar swift-smie--access-modifier-regexp
+  (regexp-opt '("private" "public" "internal")))
+
+(defun swift-smie--implicit-semi-p ()
+  (save-excursion
+    (not (or (memq (char-before) '(?\{ ?\[ ?, ?. ?: ?= ?\())
+             ;; Checking for operators form for "?" and "!",
+             ;; they can be a part of the type.
+             ;; Special case: is? and as? are operators.
+             (looking-back "[[:space:]][?!]" (- (point) 2) t)
+             ;; ??, is? and as? are operators
+             (looking-back "[?][?]\\|as[?]\\|is[?]" (- (point) 3) t)
+             ;; "in" operator in closure
+             (looking-back "in" (- (point) 2) t)
+             ;; Characters placed on the second line in multi-line expression
+             (save-excursion
+               (forward-comment (buffer-size))
+               (looking-at "[.?:]"))
+             ;; Operators placed on the second line in multi-line expression
+             ;; Should respect here possible comments strict before the linebreak
+             (save-excursion
+               (forward-comment (buffer-size))
+               (looking-at swift-smie--operators-regexp))
+
+             (and (looking-back swift-smie--operators-regexp (- (point) 3) t)
+                  ;; Not a generic type
+                  (not (looking-back "[[:upper:]]>" (- (point) 2) t)))
+             ))))
+
+(defun swift-smie--forward-token ()
+  (skip-chars-forward " \t")
+  (cond
+   ((and (looking-at "\n\\|\/\/") (swift-smie--implicit-semi-p))
+    (if (eolp) (forward-char 1) (forward-comment 1))
+    ";")
+
+   ;; ((looking-at "{") (forward-char 1) "{")
+   ;; ((looking-at "}") (forward-char 1) "}")
+
+   ((looking-at ",") (forward-char 1) ",")
+   ((looking-at ":") (forward-char 1) ":")
+
+   ((looking-at "->") (forward-char 2) "->")
+
+   ((looking-at "<") (forward-char 1)
+    (if (looking-at "[[:upper:]]") "<T" "OP"))
+   ((looking-at ">") (forward-char 1)
+    (if (looking-back "[[:space:]]>" 2 t) "OP" "T>"))
+
+   ((looking-at swift-smie--operators-regexp)
+    (goto-char (match-end 0)) "OP")
+
+   ((looking-at swift-smie--decl-specifier-regexp)
+    (goto-char (match-end 1)) "DECSPEC")
+
+   ((looking-at swift-smie--access-modifier-regexp)
+    (goto-char (match-end 0)) "ACCESSMOD")
+
+   ((looking-at "\\<default\\>")
+    (goto-char (match-end 0)) "case")
+
+   ((looking-at "else if")
+    (goto-char (match-end 0)) "elseif")
+
+   (t (let ((tok (smie-default-forward-token)))
+        (cond
+         ((equal tok "case")
+          (if (looking-at "\\([\n\t ]\\|.\\)+?\\(where.*[,]\\|:\\)")
+              "case"
+            "ecase"))
+         (t tok))))
+   ))
+
+(defun swift-smie--backward-token ()
+  (let ((pos (point)))
+    (forward-comment (- (point)))
+    (cond
+     ((and (> pos (line-end-position))
+           (swift-smie--implicit-semi-p))
+      ";")
+
+     ;; ((eq (char-before) ?\{) (backward-char 1) "{")
+     ;; ((eq (char-before) ?\}) (backward-char 1) "}")
+
+     ((eq (char-before) ?,) (backward-char 1) ",")
+     ((eq (char-before) ?:) (backward-char 1) ":")
+
+     ((looking-back "->" (- (point) 2) t)
+      (goto-char (match-beginning 0)) "->")
+
+     ((eq (char-before) ?<) (backward-char 1)
+      (if (looking-at "<[[:upper:]]") "<T" "OP"))
+     ((looking-back ">[?!]?" (- (point) 2) t)
+      (goto-char (match-beginning 0))
+      (if (looking-back "[[:space:]]" 1 t) "OP" "T>"))
+
+     ((looking-back swift-smie--operators-regexp (- (point) 3) t)
+      (goto-char (match-beginning 0)) "OP")
+
+     ((looking-back swift-smie--decl-specifier-regexp (- (point) 8) t)
+      (goto-char (match-beginning 1)) "DECSPEC")
+
+     ((looking-back swift-smie--access-modifier-regexp (- (point) 8) t)
+      (goto-char (match-beginning 0)) "ACCESSMOD")
+
+     ((looking-back "\\<default\\>" (- (point) 9) t)
+      (goto-char (match-beginning 0)) "case")
+
+     ((looking-back "else if" (- (point) 7) t)
+      (goto-char (match-beginning 0)) "elseif")
+
+     (t (let ((tok (smie-default-backward-token)))
+          (cond
+           ((equal tok "case")
+            (if (looking-at "\\([\n\t ]\\|.\\)+?\\(where.*[,]\\|:\\)")
+                "case"
+              "ecase"))
+           (t tok))))
+     )))
+
 (defconst swift-smie-grammar
   (smie-prec2->grammar
    (smie-merge-prec2s
     (smie-bnf->prec2
      '((id)
        (type (type) (type "<T" types "T>") ("[" type "]"))
-       (types (type) (type "," type))
+       (types (type) (types "," types))
 
        (class-decl-exp (id) (id ":" types))
        (decl-exp (id) (id ":" type))
@@ -99,10 +239,11 @@
        (top-level-st
         ("import" type)
         (decl)
-        ("ACCESSMOD" "class" class-decl-exp "{" class-level-sts "}")
+        ("ACCESSMOD" "class" class-decl-exp class-level-sts "}")
         ("ACCESSMOD" "protocol" class-decl-exp "{" protocol-level-sts "}"))
 
-       (class-level-sts (class-level-st) (class-level-st ";" class-level-st))
+       (class-level-sts (class-level-st) (class-level-st ";" class-level-st)
+                        ("{" class-level-st "}"))
        (class-level-st
         (decl)
         (func))
@@ -167,7 +308,8 @@
 
        (closure (insts) (exp "in" insts) (exp "->" id "in" insts)))
      ;; Conflicts
-     '((nonassoc "{") (assoc "in") (assoc ",") (assoc ";") (assoc ":") (right "="))
+     '((nonassoc "{")
+       (assoc "in") (assoc ":") (assoc ",") (assoc ";") (right "="))
      '((assoc "in") (assoc "where") (assoc "OP"))
      '((assoc ";") (assoc "ecase"))
      '((assoc "case")))
@@ -187,151 +329,11 @@
        ))
     )))
 
-(defun verbose-swift-smie-rules (kind token)
-  (let ((value (swift-smie-rules kind token)))
-    (message "%s '%s'; sibling-p:%s parent:%s hanging:%s == %s" kind token
-             (ignore-errors (smie-rule-sibling-p))
-             (ignore-errors smie--parent)
-             (ignore-errors (smie-rule-hanging-p))
-             value)
-    value))
-
-(defvar swift-smie--operators-regexp
-  (regexp-opt '("*=" "/=" "%=" "+=" "-=" "<<=" ">>=" "&=" "^=" "|=" "&&=" "||="
-                "<" "<=" ">" ">=" "==" "!=" "===" "!==" "~=" "||" "&&"
-                "is" "as" "as!" "as?" "..<" "..."
-                "+" "-" "&+" "&-" "|" "^"
-                "*" "/" "%" "&*" "&/" "&%" "&"
-                "<<" ">>" "??")))
-
-(defvar swift-smie--decl-specifier-regexp
-  "\\(?1:class\\|mutating\\|override\\|static\\|unowned\\|weak\\)\\(?:[[:space:]]*func\\)")
-
-(defvar swift-smie--access-modifier-regexp
-  (regexp-opt '("private" "public" "internal")))
-
-(defun swift-smie--implicit-semi-p ()
-  (save-excursion
-    (not (or (memq (char-before) '(?\{ ?\[ ?, ?. ?: ?= ?\())
-             ;; Checking for operators form for "?" and "!",
-             ;; they can be a part of the type.
-             ;; Special case: is? and as? are operators.
-             (looking-back "[[:space:]][?!]" (- (point) 2) t)
-             ;; ??, is? and as? are operators
-             (looking-back "[?][?]\\|as[?]\\|is[?]" (- (point) 3) t)
-             ;; "in" operator in closure
-             (looking-back "in" (- (point) 2) t)
-             ;; Characters placed on the second line in multi-line expression
-             (save-excursion
-               (forward-comment (buffer-size))
-               (looking-at "[.?:]"))
-             ;; Operators placed on the second line in multi-line expression
-             ;; Should respect here possible comments strict before the linebreak
-             (save-excursion
-               (forward-comment (buffer-size))
-               (looking-at swift-smie--operators-regexp))
-
-             (and (looking-back swift-smie--operators-regexp (- (point) 3) t)
-                  ;; Not a generic type
-                  (not (looking-back "[[:upper:]]>" (- (point) 2) t)))
-             ))))
-
-(defun swift-smie--forward-token ()
-  (skip-chars-forward " \t")
-  (cond
-   ((and (looking-at "\n\\|\/\/") (swift-smie--implicit-semi-p))
-    (if (eolp) (forward-char 1) (forward-comment 1))
-    ";")
-
-   ((looking-at "{") (forward-char 1) "{")
-   ((looking-at "}") (forward-char 1) "}")
-
-   ((looking-at ",") (forward-char 1) ",")
-   ((looking-at ":") (forward-char 1) ":")
-
-   ((looking-at "->") (forward-char 2) "->")
-
-   ((looking-at "<") (forward-char 1)
-    (if (looking-at "[[:upper:]]") "<T" "OP"))
-   ((looking-at ">") (forward-char 1)
-    (if (looking-back "[[:space:]]>" 2 t) "OP" "T>"))
-
-   ((looking-at swift-smie--operators-regexp)
-    (goto-char (match-end 0)) "OP")
-
-   ((looking-at swift-smie--decl-specifier-regexp)
-    (goto-char (match-end 1)) "DECSPEC")
-
-   ((looking-at swift-smie--access-modifier-regexp)
-    (goto-char (match-end 0)) "ACCESSMOD")
-
-   ((looking-at "\\<default\\>")
-    (goto-char (match-end 0)) "case")
-
-   ((looking-at "else if")
-    (goto-char (match-end 0)) "elseif")
-
-   (t (let ((tok (smie-default-forward-token)))
-        (cond
-         ((equal tok "case")
-          (if (looking-at "\\([\n\t ]\\|.\\)+?\\(where.*[,]\\|:\\)")
-              "case"
-            "ecase"))
-         (t tok))))
-   ))
-
-(defun swift-smie--backward-token ()
-  (let ((pos (point)))
-    (forward-comment (- (point)))
-    (cond
-     ((and (> pos (line-end-position))
-           (swift-smie--implicit-semi-p))
-      ";")
-
-     ((eq (char-before) ?\{) (backward-char 1) "{")
-     ((eq (char-before) ?\}) (backward-char 1) "}")
-
-     ((eq (char-before) ?,) (backward-char 1) ",")
-     ((eq (char-before) ?:) (backward-char 1) ":")
-
-     ((looking-back "->" (- (point) 2) t)
-      (goto-char (match-beginning 0)) "->")
-
-     ((eq (char-before) ?<) (backward-char 1)
-      (if (looking-at "<[[:upper:]]") "<T" "OP"))
-     ((looking-back ">[?!]?" (- (point) 2) t)
-      (goto-char (match-beginning 0))
-      (if (looking-back "[[:space:]]" 1 t) "OP" "T>"))
-
-     ((looking-back swift-smie--operators-regexp (- (point) 3) t)
-      (goto-char (match-beginning 0)) "OP")
-
-     ((looking-back swift-smie--decl-specifier-regexp (- (point) 8) t)
-      (goto-char (match-beginning 1)) "DECSPEC")
-
-     ((looking-back swift-smie--access-modifier-regexp (- (point) 8) t)
-      (goto-char (match-beginning 0)) "ACCESSMOD")
-
-     ((looking-back "\\<default\\>" (- (point) 9) t)
-      (goto-char (match-beginning 0)) "case")
-
-     ((looking-back "else if" (- (point) 7) t)
-      (goto-char (match-beginning 0)) "elseif")
-
-     (t (let ((tok (smie-default-backward-token)))
-          (cond
-           ((equal tok "case")
-            (if (looking-at "\\([\n\t ]\\|.\\)+?\\(where.*[,]\\|:\\)")
-                "case"
-              "ecase"))
-           (t tok))))
-     )))
-
 (defun swift-smie-rules (kind token)
   (pcase (cons kind token)
     (`(:elem . basic) swift-indent-offset)
 
-    (`(:after . ":") 0)
+    (`(:after . ":") (smie-rule-parent))
     (`(:before . ":")
      (cond
       ;; Rule for ternary operator in
@@ -342,13 +344,14 @@
       ((smie-rule-parent-p "case") swift-indent-offset)
       ;; Rule for the class definition.
       ((smie-rule-parent-p "class") (smie-rule-parent swift-indent-offset))))
-
+    ;;(`(:after . "class") 0)
     (`(:after . "{")
      (if (smie-rule-parent-p "switch")
          (smie-rule-parent swift-indent-switch-case-offset)))
     (`(:before . ";")
      (if (smie-rule-parent-p "case")
-         (smie-rule-parent swift-indent-offset)))
+         (smie-rule-parent swift-indent-offset)
+       0))
 
     ;; Apply swift-indent-multiline-statement-offset only if
     ;; - if is a first token on the line
@@ -398,6 +401,11 @@
       ((smie-rule-parent-p "[") (smie-rule-parent swift-indent-offset))
       ((smie-rule-parent-p "{") nil)
       (t (smie-rule-parent))))
+    (`(:before . "{")
+     (cond
+      ((smie-rule-bolp) 0)
+      ((smie-rule-hanging-p) (smie-rule-parent))
+     ))
     (`(:after . "->") (smie-rule-parent swift-indent-offset))
     ))
 
@@ -739,8 +747,8 @@ You can send text to the REPL process from other buffers containing source.
     ;;
     ;; With enabled syntax table, smie doesn't respect closing brace, so
     ;; it's impossible to provide custom indentation rules
-    (modify-syntax-entry ?\{ "w" table)
-    (modify-syntax-entry ?\} "w" table)
+    (modify-syntax-entry ?\{ "(}" table)
+    (modify-syntax-entry ?\} "({" table)
 
     table))
 
@@ -778,7 +786,8 @@ You can send text to the REPL process from other buffers containing source.
   (setq-local indent-tabs-mode nil)
   (setq-local electric-indent-chars
               (append '(?. ?, ?: ?\) ?\] ?\}) electric-indent-chars))
-  (smie-setup swift-smie-grammar 'swift-smie-rules ;; 'verbose-swift-smie-rules
+  (smie-setup swift-smie-grammar ;;'swift-smie-rules
+              'verbose-swift-smie-rules
               :forward-token 'swift-smie--forward-token
               :backward-token 'swift-smie--backward-token))
 
