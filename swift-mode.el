@@ -84,7 +84,7 @@
        (type (type) (type "<T" types "T>") ("[" type "]"))
        (types (type) (type "," type))
 
-       (class-decl-exp (id) (id ":" types))
+       (class-decl-exp (id) (id ":" types));; types is closer?
        (decl-exp (id) (id ":" type))
        (decl-exps (decl-exp) (decl-exp "," decl-exp))
 
@@ -105,8 +105,9 @@
        (top-level-st
         ("import" type)
         (decl)
-        ("ACCESSMOD" "class" class-decl-exp "class-{" class-level-sts "}")
-        ("ACCESSMOD" "protocol" class-decl-exp "protocol-{" protocol-level-sts "}")
+        ("class" class-decl-exp "class-{" class-level-sts "}")
+        ("protocol" class-decl-exp "protocol-{" protocol-level-sts "}")
+        ("ACCESSMOD" top-level-st)
         )
 
        (class-level-sts (class-level-st) (class-level-st ";" class-level-st))
@@ -120,12 +121,22 @@
         (func-decl))
 
        (func-body (insts) ("return" exp))
+
        (func (func-decl "{" func-body "}"))
        (func-decl ("DECSPEC" "func" func-header)
                   (func-decl "->" type))
-       (func-header (id "(" func-params ")"))
+       (func-header (id "(" func-params ")")) ;; "(" need token forward?
+
+       ;; (func ("func" func-header "{" func-body "}")
+       ;;  ;;("DECSPEC" func)
+       ;;  )
+       ;; (func-decl ("func" func-header ";"))
+       ;; (func-header (id "(" func-params ")")
+       ;;              ;;(func-header "->" type)
+       ;;              )
        (func-param (decl-exp) (decl-exp "=" id) ("..."))
-       (func-params (func-param "," func-param))
+       (func-params (func-params "," func-params)
+                    (func-param))
 
        (insts (inst) (insts ";" insts))
        (inst (decl)
@@ -134,6 +145,7 @@
              (in-exp)
              (dot-exp)
              (dot-exp "{" closure "}")
+             (func-call)
              (method-call)
              (method-call "{" closure "}")
              ("enum" decl-exp "{" enum-body "}")
@@ -143,10 +155,12 @@
              ("for" for-head "{" insts "}")
              ("while" exp "{" insts "}"))
 
+       ;;(func-call (id "(" method-args ")"))
        (dot-exp (id "." id))
 
        (method-call (dot-exp "(" method-args ")"))
-       (method-args (method-arg) (method-args "," method-args))
+       (method-args (method-arg)
+                    (method-args "," method-args))
        (method-arg (id "{" closure "}") (exp))
 
        (exp (op-exp)
@@ -163,7 +177,8 @@
 
        (case-exps (exp)
                   (guard-exp)
-                  (case-exps "," case-exps))
+                  ;;(case-exps "," case-exps)
+                  )
        (case ("case" case-exps "case-:" insts))
        (switch-body (case))
 
@@ -173,10 +188,17 @@
        (guard-statement ("guard" guard-conditional "elseguard" "{" insts "}"))
 
        (if-conditional (exp) (let-decl))
-       (if-body ("if" if-conditional "{" insts "}"))
-       (if-clause (if-body)
-                  (if-body "elseif" if-conditional "{" insts "}")
-                  (if-body "else" "{" insts "}"))
+       (if-body ("if" if-conditional "{" insts "}")
+                (if-body "elseif" if-conditional "{" insts "}"))
+       ;;(else-body ("else" if-conditional "{" insts "}"))
+       (if-clause
+        (if-body)
+        (if-body "else" if-conditional "{" insts "}")
+        ;; (if-body "elseif" if-conditional "{" insts "}")
+        ;; (if-body "else" "{" insts "}")
+        ;;("if" if-conditional "{" insts "}")
+        ;;("if" if-conditional "{" insts "}")
+        )
 
        (closure (insts) (exp "in" insts) (exp "->" id "in" insts)))
      ;; Conflicts
@@ -250,16 +272,17 @@
              ))))
 
 (defun swift-smie--forward-token ()
-  (skip-chars-forward " \t")
+  (forward-comment (point));; for move sexp when empty class
   (cond
    ((and (looking-at "\n\\|\/\/") (swift-smie--implicit-semi-p))
     (if (eolp) (forward-char 1) (forward-comment 1))
     ";")
 
-   ((looking-at "{") (forward-char 1)
-    (if (looking-back "\\(class\\|protocol\\) [^{]+{" (line-beginning-position) t)
+   ((looking-at "{")
+    (forward-char 1)
+    (if (looking-back "\\(class\\|protocol\\) [^{]+{")
         (concat (match-string 1) "-{")
-      "{"))
+      "{"));;
    ((looking-at "}") (forward-char 1) "}")
 
    ((looking-at ",") (forward-char 1) ",")
@@ -312,7 +335,7 @@
       ";")
 
      ((eq (char-before) ?\{) (backward-char 1)
-      (if (looking-back "\\(class\\|protocol\\) [^{]+" (line-beginning-position) t)
+      (if (looking-back "\\(class\\|protocol\\) [^{]+")
           (concat (match-string 1) "-{")
         "{"))
      ((eq (char-before) ?\}) (backward-char 1) "}")
@@ -804,7 +827,7 @@ You can send text to the REPL process from other buffers containing source.
   (setq-local indent-tabs-mode nil)
   (setq-local electric-indent-chars
               (append '(?. ?, ?: ?\) ?\] ?\}) electric-indent-chars))
-  (smie-setup swift-smie-grammar 'swift-smie-rules ;; 'verbose-swift-smie-rules
+  (smie-setup swift-smie-grammar 'verbose-swift-smie-rules ;;'swift-smie-rules
               :forward-token 'swift-smie--forward-token
               :backward-token 'swift-smie--backward-token))
 
