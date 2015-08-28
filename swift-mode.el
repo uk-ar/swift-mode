@@ -105,8 +105,8 @@
        (top-level-st
         ("import" type)
         (decl)
-        ("ACCESSMOD" "class" class-decl-exp "class-{" class-level-sts "}")
-        ("ACCESSMOD" "protocol" class-decl-exp "protocol-{" protocol-level-sts "}")
+        ("ACCESSMOD" "class" class-decl-exp "{" class-level-sts "}")
+        ("ACCESSMOD" "protocol" class-decl-exp "{" protocol-level-sts "}")
         )
 
        (class-level-sts (class-level-st) (class-level-st ";" class-level-st))
@@ -256,11 +256,10 @@
    ((and (looking-at "\n\\|\/\/") (swift-smie--implicit-semi-p))
     (if (eolp) (forward-char 1) (forward-comment 1))
     ";")
-
-   ((looking-at "{") (forward-char 1)
-    (if (looking-back "\\(class\\|protocol\\) [^{]+{" (line-beginning-position) t)
-        (concat (match-string 1) "-{")
-      "{"))
+   (t
+    (forward-comment (point))
+    (cond
+   ((looking-at "{") (forward-char 1) "{")
    ((looking-at "}") (forward-char 1) "}")
 
    ((looking-at ",") (forward-char 1) ",")
@@ -303,6 +302,7 @@
             "else"))
          (t tok))))
    ))
+   ))
 
 (defun swift-smie--backward-token ()
   (let ((pos (point)))
@@ -312,10 +312,7 @@
            (swift-smie--implicit-semi-p))
       ";")
 
-     ((eq (char-before) ?\{) (backward-char 1)
-      (if (looking-back "\\(class\\|protocol\\) [^{]+" (line-beginning-position) t)
-          (concat (match-string 1) "-{")
-        "{"))
+     ((eq (char-before) ?\{) (backward-char 1) "{")
      ((eq (char-before) ?\}) (backward-char 1) "}")
 
      ((eq (char-before) ?,) (backward-char 1) ",")
