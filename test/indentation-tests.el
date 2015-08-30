@@ -1057,10 +1057,10 @@ let foo = [
 (check-indentation indents-declaration/12
   "
 let foo = [
-|[
+|[]]
 " "
 let foo = [
-    |[
+    |[]]
 ")
 
 (check-indentation indents-declaration/13
@@ -1924,12 +1924,12 @@ foo.bar(10,
 foo.bar(10,
         completionHandler: { (bar, baz) -> Void in
         |foo
-        }
+        })
 " "
 foo.bar(10,
         completionHandler: { (bar, baz) -> Void in
             |foo
-        }
+        })
 ")
 
 (check-indentation anonymous-function-as-a-argument/9
