@@ -105,8 +105,9 @@
        (top-level-st
         ("import" type)
         (decl)
-        ("ACCESSMOD" "class" class-decl-exp "{" class-level-sts "}")
-        ("ACCESSMOD" "protocol" class-decl-exp "{" protocol-level-sts "}")
+        ("class" class-decl-exp "{" class-level-sts "}")
+        ("protocol" class-decl-exp "{" protocol-level-sts "}")
+        ;; "ACCESSMOD" should be ignored
         )
 
        (class-level-sts (class-level-st) (class-level-st ";" class-level-st))
@@ -301,7 +302,9 @@
     (goto-char (match-end 1)) "DECSPEC")
 
    ((looking-at swift-smie--access-modifier-regexp)
-    (goto-char (match-end 0)) "ACCESSMOD")
+    (goto-char (match-end 0))
+    ;; should return swift-mode--type-decl-keywords or "func"
+    (smie-default-forward-token))
 
    ((looking-at "\\<default\\>")
     (goto-char (match-end 0)) "case")
@@ -350,18 +353,22 @@
       (goto-char (match-beginning 0))
       (if (looking-back "[[:space:]]" 1 t) "OP" "T>"))
 
-     ((looking-back (regexp-opt swift-mode--type-decl-keywords) (- (point) 9) t)
+     ((looking-back (regexp-opt
+                     ;; swift-mode--fn-decl-keywords is better?
+                     (append swift-mode--type-decl-keywords '("func"))) (- (point) 9) t)
       (goto-char (match-beginning 0))
-      (match-string-no-properties 0))
+      (let ((tok (match-string-no-properties 0)))
+        (when (string-match-p swift-smie--access-modifier-regexp
+                              (save-excursion (smie-default-backward-token)))
+          (smie-default-backward-token))
+        tok
+        ))
 
      ((looking-back swift-smie--operators-regexp (- (point) 3) t)
       (goto-char (match-beginning 0)) "OP")
 
      ((looking-back swift-smie--decl-specifier-regexp (- (point) 8) t)
       (goto-char (match-beginning 1)) "DECSPEC")
-
-     ((looking-back swift-smie--access-modifier-regexp (- (point) 8) t)
-      (goto-char (match-beginning 0)) "ACCESSMOD")
 
      ((looking-back "\\<default\\>" (- (point) 9) t)
       (goto-char (match-beginning 0)) "case")
