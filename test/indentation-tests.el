@@ -1248,10 +1248,10 @@ func a () {
 (check-indentation indents-multiline-expressions/13
                    "
 if (a
-|.b)
+|.b){}
 " "
 if (a
-     |.b)
+     |.b){}
 ")
 
 (check-indentation indents-multiline-expressions/14
