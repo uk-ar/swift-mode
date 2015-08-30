@@ -86,6 +86,11 @@ values of customisable variables."
            (should (equal (point-max) (point)))
            (forward-list -10)
            (should (equal (point-min) (point)))
+
+           (while (< 0 (skip-syntax-forward "^)"))
+             (unless (eobp) (forward-char 1))
+             ;; should not mismatch
+             (should (eq (blink-matching-open) nil)))
            )))))
 
 ;; Provide font locking for easier test editing.
