@@ -1209,7 +1209,7 @@ foo?[bar] +
      |a
 " "
 foo?[bar] +
-     |a
+  |a
 ")
 
 (check-indentation indents-multiline-expressions/10
@@ -1218,7 +1218,7 @@ foo?(bar) +
      |a
 " "
 foo?(bar) +
-     |a
+  |a
 ")
 
 (check-indentation indents-multiline-expressions/11
