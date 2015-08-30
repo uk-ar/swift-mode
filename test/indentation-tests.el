@@ -1232,10 +1232,12 @@ foo?(bar) +
 func a () {
     a +
 |a
+}
 " "
 func a () {
     a +
       |a
+}
 ")
 
 (check-indentation indents-multiline-expressions/12
@@ -1243,10 +1245,12 @@ func a () {
 func a () {
     a
 |.a()
+}
 " "
 func a () {
     a
       |.a()
+}
 ")
 
 (check-indentation indents-multiline-expressions/13
