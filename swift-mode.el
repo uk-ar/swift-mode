@@ -130,6 +130,7 @@
        (func-params (func-param "," func-param))
 
        (code-block ("block-{" insts "}"))
+       (func-block ("func-{" insts "}"))
 
        (insts (inst) (insts ";" insts))
        (inst (decl)
@@ -277,14 +278,22 @@
     (if (eolp) (forward-char 1) (forward-comment 1))
     ";")
    (t
-    (forward-comment (point))
+    (forward-comment (point-max))
     (cond
      ((looking-at "{")
       (prog1
-          (if (equal (save-excursion (smie-default-backward-token))
-                     ":")
-              "block-{"
-            "{")
+          (cond
+           ((save-excursion
+              (forward-comment (- (point)))
+              (eq (char-before) ?\) ))
+            "func-{");; there is if ()
+            ((member
+              (save-excursion (smie-default-backward-token))
+              ;; ":" is for param
+              ;; "(" is for param
+              '(":" ""))
+             "block-{")
+           (t "{"))
         (forward-char 1)))
    ((looking-at "}") (forward-char 1) "}")
 
@@ -344,9 +353,18 @@
       ";")
 
      ((eq (char-before) ?\{) (backward-char 1)
-      (if (equal (save-excursion (smie-default-backward-token)) ":")
-          "block-{"
-        "{"))
+      (cond
+       ((save-excursion
+          (forward-comment (- (point)))
+          (eq (char-before) ?\) ))
+        "func-{");; there is if ()
+       ((member
+         (save-excursion (smie-default-backward-token))
+         ;; ":" is for param
+         ;; "(" is for param
+         '(":" ""))
+        "block-{")
+       (t "{")))
 
      ((eq (char-before) ?\}) (backward-char 1) "}")
 
@@ -422,9 +440,29 @@
     (`(:after . "{")
      (if (smie-rule-parent-p "switch")
          (smie-rule-parent swift-indent-switch-case-offset)))
+
+    (`(:before . "{")
+     swift-indent-offset)
+
     (`(:before . "block-{")
-     (if (smie-rule-parent-p ",")
-         (smie-rule-parent)))
+     ;; (if (smie-rule-parent-p ",")
+     ;;     (smie-rule-parent))
+     (if (smie-rule-parent-p "(")
+         (smie-rule-parent 1)
+       (smie-rule-parent))
+     )
+    ;; (`(:after . "func-{")
+    ;;  0)
+    (`(:before . "func-{")
+     (cond
+      ;; ((smie-rule-parent-p "func")
+      ;;  ;; (smie-rule-parent swift-indent-offset)
+      ;;  (smie-rule-parent)
+      ;;  )
+      ;;(t 0)
+      ((smie-rule-hanging-p) (smie-rule-parent))
+      )
+     )
     (`(:before . ";")
      (if (smie-rule-parent-p "case")
          (smie-rule-parent swift-indent-offset)))
@@ -457,11 +495,11 @@
 
     ;; Disable unnecessary default indentation for
     ;; "func" and "class" keywords
-    (`(:after . ,(or `"func" `"class")) (smie-rule-parent))
+    (`(:after . ,(or `"class" `"func")) (smie-rule-parent));;
 
     ;; "in" token in closure
     (`(:after . "in")
-     (if (smie-rule-parent-p "{")
+     (if (smie-rule-parent-p "{" "block-{")
          (smie-rule-parent swift-indent-offset)
        (smie-rule-parent 0)))
 
@@ -483,6 +521,7 @@
       ((smie-rule-prev-p "->") swift-indent-offset)
       ((smie-rule-parent-p "[") (smie-rule-parent swift-indent-offset))
       ((smie-rule-parent-p "{") nil)
+      ((smie-rule-parent-p "func-{") nil)
       ((smie-rule-parent-p "class-{") nil)
       (t (smie-rule-parent))))
     (`(:after . "->") (smie-rule-parent swift-indent-offset))
