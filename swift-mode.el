@@ -129,6 +129,8 @@
        (func-param (decl-exp) (decl-exp "=" id) ("..."))
        (func-params (func-param "," func-param))
 
+       (code-block ("block-{" insts "}"))
+
        (insts (inst) (insts ";" insts))
        (inst (decl)
              (exp "=" exp)
@@ -277,7 +279,13 @@
    (t
     (forward-comment (point))
     (cond
-   ((looking-at "{") (forward-char 1) "{")
+     ((looking-at "{")
+      (prog1
+          (if (equal (save-excursion (smie-default-backward-token))
+                     ":")
+              "block-{"
+            "{")
+        (forward-char 1)))
    ((looking-at "}") (forward-char 1) "}")
 
    ((looking-at ",") (forward-char 1) ",")
@@ -335,7 +343,11 @@
            (swift-smie--implicit-semi-p))
       ";")
 
-     ((eq (char-before) ?\{) (backward-char 1) "{")
+     ((eq (char-before) ?\{) (backward-char 1)
+      (if (equal (save-excursion (smie-default-backward-token)) ":")
+          "block-{"
+        "{"))
+
      ((eq (char-before) ?\}) (backward-char 1) "}")
 
      ((eq (char-before) ?,) (backward-char 1) ",")
@@ -410,6 +422,9 @@
     (`(:after . "{")
      (if (smie-rule-parent-p "switch")
          (smie-rule-parent swift-indent-switch-case-offset)))
+    (`(:before . "block-{")
+     (if (smie-rule-parent-p ",")
+         (smie-rule-parent)))
     (`(:before . ";")
      (if (smie-rule-parent-p "case")
          (smie-rule-parent swift-indent-offset)))
