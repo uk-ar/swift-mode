@@ -244,10 +244,15 @@
     (`(:elem . basic) swift-indent-offset)
     ;;(`(,_ . ",") (smie-rule-separator kind))
     ;;(`(:list-intro . ",") 0)
-    (`(:before . ",")
-     ;;(when (smie-rule-hanging-p) (smie-rule-parent))
-     (smie-rule-parent)
+    (`(:after . ",")
+     ;;swift-indent-offset
+     (when (smie-rule-hanging-p) (smie-rule-parent swift-indent-offset))
      )
+    (`(:before . ",")
+     (cond
+      ;;((smie-rule-hanging-p) (smie-rule-parent swift-indent-offset))
+      (t (smie-rule-parent))
+      ))
     (`(:before . ,(or `"{"));;
      (when (smie-rule-hanging-p) (smie-rule-parent)))
     ;; (`(:before . ,(or `":"));;
