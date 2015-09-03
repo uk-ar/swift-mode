@@ -245,7 +245,9 @@
     ;;(`(,_ . ",") (smie-rule-separator kind))
     ;;(`(:list-intro . ",") 0)
     (`(:before . ",")
-     (when (smie-rule-hanging-p) (smie-rule-parent)))
+     ;;(when (smie-rule-hanging-p) (smie-rule-parent))
+     (smie-rule-parent)
+     )
     (`(:before . ,(or `"{"));;
      (when (smie-rule-hanging-p) (smie-rule-parent)))
     ;; (`(:before . ,(or `":"));;
