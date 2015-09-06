@@ -214,7 +214,8 @@
       ;;(class ("class" id ":" exps))
       (inst ;;(id ":=" exp)
        (exp)
-       ;;("class" id ":" exps)
+       ("class" id ":" exps)
+       ("if" exp)
        ;;("class" exps)
        ;;(class)
        )
@@ -223,10 +224,13 @@
       ;;(class (insts "class" insts))
       ;;(inherit (id ":" exp))
       (exp (exp "OP" exp)
-           ;;("{" insts "}")
            ;;(insts "class" insts)
            ;;(id ":" exps)
+           ("{" insts "}")
            ("(" exps ")")
+           (exp "in" exp)
+           (id "." exp)
+           (id ":" exp);; param
            ;;(id ":" exp);; inherit
            )
 
@@ -234,7 +238,7 @@
       )
     '((assoc ";"))
     ;;'((assoc "OP"))
-    '((assoc "{") (assoc ",") (assoc "OP") (assoc ":"))
+    '((assoc "{") (assoc ",") (assoc ":") (assoc "in") (assoc "OP"))
     ;;'((assoc ":"))
     ;;'()
     )))
@@ -244,9 +248,27 @@
     (`(:elem . basic) swift-indent-offset)
     ;;(`(,_ . ",") (smie-rule-separator kind))
     ;;(`(:list-intro . ",") 0)
+    ;; (`(:after . ".")
+    ;;  2
+    ;;  )
+    ;; (`(:close-all . ")")
+    ;;  ;;(smie-rule-parent 15)
+    ;;  )
+    ;; (`(:before . "(")
+    ;;  (cond
+    ;;   ((smie-rule-parent-p ".") (+ 1 (current-column)))
+    ;;   (t (smie-rule-parent)))
+    ;;   )
+
+    ;;(`(:after . "(") 10)
+    ;;(`(:before . "(") (+ 1 (current-column)))
+    ;;(`(:after . "in") (smie-rule-parent swift-indent-offset))
+    (`(:before . "in")
+     (when (smie-rule-hanging-p) (smie-rule-parent swift-indent-offset)))
     (`(:after . ",")
-     ;;swift-indent-offset
-     (when (smie-rule-hanging-p) (smie-rule-parent swift-indent-offset))
+     (when (and (smie-rule-hanging-p)
+                (smie-rule-parent-p ":"));; multi line class inherit
+       (smie-rule-parent swift-indent-offset))
      )
     (`(:before . ",")
      (cond
@@ -254,11 +276,20 @@
       (t (smie-rule-parent))
       ))
     (`(:before . ,(or `"{"));;
-     (when (smie-rule-hanging-p) (smie-rule-parent)))
+     (cond
+      ;; ((smie-rule-parent-p "(")
+      ;;  10)
+      ((smie-rule-hanging-p) (smie-rule-parent))
+      ((smie-rule-prev-p ":") (smie-rule-parent swift-indent-offset))
+      ;;((smie-rule-parent-p "(") (smie-rule-parent));; swift-indent-offset))      ;;(smie-rule-parent swift-indent-offset));;
+      ;;((smie-rule-prev-p ":") (smie-rule-parent)
+      ;;((smie-rule-prev-p ":") 0)
+     ))
     ;; (`(:before . ,(or `":"));;
     ;;  (smie-rule-parent))
     ;;(`(:after . ":") 0)
     (`(:after . "class") 0)
+    (`(:after . "if") 0)
     (`(:after . ":") (smie-rule-parent))
     ;;(`(:after . ":") 0)
     ;;(`(:after . "class") swift-indent-offset)
