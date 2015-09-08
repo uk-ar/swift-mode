@@ -232,6 +232,7 @@
            (id "." exp)
            (id ":" exp);; param
            ;;(id ":" exp);; inherit
+           ("case" exp "case-:");;insts
            )
 
       (exps (exps "," exps) (exp))
@@ -246,7 +247,7 @@
 (defun swift-smie-rules (kind token)
   (pcase (cons kind token)
     (`(:elem . basic) swift-indent-offset)
-    ;;(`(,_ . ",") (smie-rule-separator kind))
+    (`(,_ . ",") (smie-rule-separator kind))
     ;;(`(:list-intro . ",") 0)
     ;; (`(:after . ".")
     ;;  2
@@ -261,29 +262,38 @@
     ;;   )
 
     ;;(`(:after . "(") 10)
+    (`(:before . "case")
+     (smie-rule-parent))
+    (`(:before . "(")
+     ;;(when (smie-rule-hanging-p) (smie-rule-parent))
+     (smie-rule-parent)
+     )
     ;;(`(:before . "(") (+ 1 (current-column)))
     ;;(`(:after . "in") (smie-rule-parent swift-indent-offset))
+    ;; unused?
     (`(:before . "in")
      (when (smie-rule-hanging-p) (smie-rule-parent swift-indent-offset)))
-    (`(:after . ",")
-     (when (and (smie-rule-hanging-p)
-                (smie-rule-parent-p ":"));; multi line class inherit
-       (smie-rule-parent swift-indent-offset))
-     )
-    (`(:before . ",")
-     (cond
-      ;;((smie-rule-hanging-p) (smie-rule-parent swift-indent-offset))
-      (t (smie-rule-parent))
-      ))
+    ;; (`(:after . ",")
+    ;;  (when (and (smie-rule-hanging-p)
+    ;;             (smie-rule-parent-p ":"));; multi line class inherit
+    ;;    (smie-rule-parent swift-indent-offset))
+    ;;  )
+    ;; (`(:before . ",")
+    ;;  (cond
+    ;;   ;;((smie-rule-hanging-p) (smie-rule-parent swift-indent-offset))
+    ;;   (t (smie-rule-parent))
+    ;;   ))
     (`(:before . ,(or `"{"));;
      (cond
       ;; ((smie-rule-parent-p "(")
       ;;  10)
-      ((smie-rule-hanging-p) (smie-rule-parent))
-      ((smie-rule-prev-p ":") (smie-rule-parent swift-indent-offset))
+      ;; ((smie-rule-hanging-p) (smie-rule-parent))
+      ;; ((smie-rule-prev-p ":") (smie-rule-parent swift-indent-offset))
       ;;((smie-rule-parent-p "(") (smie-rule-parent));; swift-indent-offset))      ;;(smie-rule-parent swift-indent-offset));;
       ;;((smie-rule-prev-p ":") (smie-rule-parent)
       ;;((smie-rule-prev-p ":") 0)
+      ((and (smie-rule-prev-p "(") (smie-rule-parent-p "(")) 1)
+      (t (smie-rule-parent))
      ))
     ;; (`(:before . ,(or `":"));;
     ;;  (smie-rule-parent))
@@ -344,7 +354,7 @@
                   ;; Not a generic type
                   (not (looking-back "[[:upper:]]>" (- (point) 2) t)))
              )))
-  nil)
+  )
 
 (defun swift-smie--forward-token-debug ()
   (let ((token (swift-smie--forward-token)))
