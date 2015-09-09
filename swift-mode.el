@@ -475,6 +475,7 @@ We try to constraint those lookups by reasonable number of lines.")
        ("if" exp)
        ;;("class" exps)
        ;;(class)
+       ("case" exp "case-:" insts)
        )
       (insts (insts ";" insts) (inst)
              )
@@ -496,6 +497,7 @@ We try to constraint those lookups by reasonable number of lines.")
     '((assoc ";"))
     ;;'((assoc "OP"))
     '((assoc "{") (assoc ",") (assoc ":") (assoc "in") (assoc "OP"))
+    ;;'((assoc "{") (assoc ":") (left ",") (assoc "in") (assoc "OP"))
     ;;'((assoc ":"))
     ;;'()
     )))
@@ -919,7 +921,7 @@ You can send text to the REPL process from other buffers containing source.
   (setq-local indent-tabs-mode nil)
   (setq-local electric-indent-chars
               (append '(?. ?, ?: ?\) ?\] ?\}) electric-indent-chars))
-  (smie-setup swift-smie-grammar 'swift-smie-rules ;; 'verbose-swift-smie-rules
+  (smie-setup swift-smie-grammar 'verbose-swift-smie-rules ;; 'swift-smie-rules
               :forward-token 'swift-smie--forward-token
               :backward-token 'swift-smie--backward-token))
 
