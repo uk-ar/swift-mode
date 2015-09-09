@@ -281,8 +281,6 @@ We try to constraint those lookups by reasonable number of lines.")
    (t
     (forward-comment (point))
     (cond
-   ((looking-at "{") (forward-char 1) "{")
-   ((looking-at "}") (forward-char 1) "}")
 
    ((looking-at ",") (forward-char 1) ",")
    ((looking-at ":") (forward-char 1)
@@ -338,9 +336,6 @@ We try to constraint those lookups by reasonable number of lines.")
      ((and (> pos (line-end-position))
            (swift-smie--implicit-semi-p))
       ";")
-
-     ((eq (char-before) ?\{) (backward-char 1) "{")
-     ((eq (char-before) ?\}) (backward-char 1) "}")
 
      ((eq (char-before) ?,) (backward-char 1) ",")
      ((eq (char-before) ?:) (backward-char 1)
