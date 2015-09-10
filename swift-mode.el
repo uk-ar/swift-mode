@@ -546,9 +546,14 @@ We try to constraint those lookups by reasonable number of lines.")
     (`(:after . ",")
      (cond
       ;; multi line class inherit
+      ;; (if (and swift-indent-hanging-comma-offset (smie-rule-parent-p "class" "case"))
+      ;;     (smie-rule-parent swift-indent-hanging-comma-offset))
       ((and (smie-rule-hanging-p)
-            (smie-rule-parent-p ":"))
-       (smie-rule-parent swift-indent-offset))
+            (smie-rule-parent-p ":" "case")
+            swift-indent-hanging-comma-offset)
+       ;;(smie-rule-parent swift-indent-offset)
+       (smie-rule-parent swift-indent-hanging-comma-offset)
+       )
       ;; ;; multi func param list
       ;; ((and (smie-rule-hanging-p)
       ;;       (smie-rule-parent-p "("))
