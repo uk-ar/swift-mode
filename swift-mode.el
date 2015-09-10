@@ -503,7 +503,7 @@ We try to constraint those lookups by reasonable number of lines.")
     ;;'((assoc ":"))
     ;;'()
     )))
-;; 71 passed
+;; 97 passed
 (defun swift-smie-rules (kind token)
   (pcase (cons kind token)
     (`(:elem . basic) swift-indent-offset)
@@ -523,25 +523,43 @@ We try to constraint those lookups by reasonable number of lines.")
 
     ;;(`(:after . "(") 10)
     ;;(`(:before . "(") (+ 1 (current-column)))
+    (`(:before . "(") (smie-rule-parent))
     ;;(`(:after . "in") (smie-rule-parent swift-indent-offset))
-    (`(:before . "in")
-     (when (smie-rule-hanging-p) (smie-rule-parent swift-indent-offset)))
-    (`(:after . ",")
-     (when (and (smie-rule-hanging-p)
-                (smie-rule-parent-p ":"));; multi line class inherit
-       (smie-rule-parent swift-indent-offset))
+    (`(:after . "in")
+     (when (smie-rule-hanging-p)
+       ;;(smie-rule-parent)
+       swift-indent-offset
+       )
      )
-    (`(:before . ",")
+    (`(:before . "in")
+     (when (smie-rule-hanging-p) (smie-rule-parent)))
+    ;;  (when (smie-rule-hanging-p) (smie-rule-parent swift-indent-offset)))
+    (`(:after . ",")
      (cond
-      ;;((smie-rule-hanging-p) (smie-rule-parent swift-indent-offset))
-      (t (smie-rule-parent))
-      ))
+      ;; multi line class inherit
+      ((and (smie-rule-hanging-p)
+            (smie-rule-parent-p ":"))
+       (smie-rule-parent swift-indent-offset))
+      ;; ;; multi func param list
+      ;; ((and (smie-rule-hanging-p)
+      ;;       (smie-rule-parent-p "("))
+      ;;  1)
+      )
+     )
+    ;; (`(:before . ",")
+    ;;  (cond
+    ;;   ;;((smie-rule-hanging-p) (smie-rule-parent swift-indent-offset))
+    ;;   (t (smie-rule-parent))
+    ;;   ))
     (`(:before . ,(or `"{"));;
      (cond
       ;; ((smie-rule-parent-p "(")
       ;;  10)
+      ((smie-rule-prev-p "(") 1)
       ((smie-rule-hanging-p) (smie-rule-parent))
-      ((smie-rule-prev-p ":") (smie-rule-parent swift-indent-offset))
+      ((smie-rule-prev-p ":") (smie-rule-parent))
+      ;;((smie-rule-prev-p ":") (smie-rule-parent))
+      ;;((smie-rule-prev-p ":") (smie-rule-parent swift-indent-offset))
       ;;((smie-rule-parent-p "(") (smie-rule-parent));; swift-indent-offset))      ;;(smie-rule-parent swift-indent-offset));;
       ;;((smie-rule-prev-p ":") (smie-rule-parent)
       ;;((smie-rule-prev-p ":") 0)
