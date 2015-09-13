@@ -792,7 +792,7 @@ class Foo:
 }
 " "
 class Foo:
-    |Foo, Bar, Baz {
+|Foo, Bar, Baz {
 }
 ")
 
@@ -832,15 +832,15 @@ class Foo: Foo,
 (check-indentation indents-class-declaration/10
                    "
 class Foo: Foo,
-      Bar,
-      Bar2,
-      Baz {
+Bar,
+Bar2,
+Baz {
   |}
 " "
 class Foo: Foo,
-      Bar,
-      Bar2,
-      Baz {
+Bar,
+Bar2,
+Baz {
 |}
 ")
 
