@@ -502,11 +502,11 @@ We try to constraint those lookups by reasonable number of lines.")
            ("<T" exps "T>")
            (exp2 "in" exp2)
            (id "." exp2)
-           ;;(id ":" exp);; param
            ;;(id ":" exp);; inherit
            )
 
-      (exps (exps "," exps) (exp2))
+      (exps (exps "," exps) (exp2)
+            (id ":" exp2));; param)
       )
     '((assoc ";"))
     '((assoc "="))
@@ -516,7 +516,7 @@ We try to constraint those lookups by reasonable number of lines.")
     ;;'((assoc ":"))
     ;;'()
     )))
-;; 111 passed
+;; 135 passed
 (defun swift-smie-rules (kind token)
   (pcase (cons kind token)
     (`(:elem . basic) swift-indent-offset)
@@ -530,7 +530,8 @@ We try to constraint those lookups by reasonable number of lines.")
     ;;  )
     ;; (`(:before . "(")
     ;;  (cond
-    ;;   ((smie-rule-parent-p ".") (+ 1 (current-column)))
+    ;;   ;;((smie-rule-parent-p ".") (+ 1 (current-column)))
+    ;;   ((smie-rule-parent-p ".") 0)
     ;;   (t (smie-rule-parent)))
     ;;   )
 
@@ -595,11 +596,11 @@ We try to constraint those lookups by reasonable number of lines.")
       ;;  1)
       )
      )
-    (`(:before . ",")
-     (cond
-      ;;((smie-rule-hanging-p) (smie-rule-parent swift-indent-offset))
-      (t (smie-rule-parent))
-      ))
+    ;; (`(:before . ",")
+    ;;  (cond
+    ;;   ;;((smie-rule-hanging-p) (smie-rule-parent swift-indent-offset))
+    ;;   (t (smie-rule-parent))
+    ;;   ))
     (`(:before . ,(or `"{"));;
      (cond
       ;; ((smie-rule-parent-p "(")
@@ -623,7 +624,7 @@ We try to constraint those lookups by reasonable number of lines.")
     (`(:after . "class") 0)
     (`(:after . "if") 0)
     (`(:after . "enum") 0)
-    (`(:after . ":") (smie-rule-parent))
+    ;;(`(:after . ":") (smie-rule-parent))
     ;;(`(:after . ":") 0)
     ;;(`(:after . "class") swift-indent-offset)
     ))
