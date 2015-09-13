@@ -322,7 +322,7 @@ We try to constraint those lookups by reasonable number of lines.")
    (t (let ((tok (smie-default-forward-token)))
         (cond
          ((equal tok "case")
-          (if (looking-at "\\([\n\t ]\\|.\\)+?\\(where.*[,]\\|:\\)")
+          (if (looking-at "\\([\n\t ]\\|[^}]\\)+?\\(where.*[,]\\|:\\)")
               "case"
             "ecase"))
          ((equal tok "else")
@@ -383,7 +383,7 @@ We try to constraint those lookups by reasonable number of lines.")
      (t (let ((tok (smie-default-backward-token)))
           (cond
            ((equal tok "case")
-            (if (looking-at "\\([\n\t ]\\|.\\)+?\\(where.*[,]\\|:\\)")
+            (if (looking-at "\\([\n\t ]\\|[^}]\\)+?\\(where.*[,]\\|:\\)")
                 "case"
               "ecase"))
            ((equal tok "else")
