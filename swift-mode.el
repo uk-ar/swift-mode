@@ -517,7 +517,7 @@ We try to constraint those lookups by reasonable number of lines.")
     ;;'((assoc ":"))
     ;;'()
     )))
-;; 140 passed
+;; 143 passed
 (defun swift-smie-rules (kind token)
   (pcase (cons kind token)
     (`(:elem . basic) swift-indent-offset)
@@ -538,6 +538,8 @@ We try to constraint those lookups by reasonable number of lines.")
 
     ;;(`(:after . "(") 10)
     ;;(`(:before . "(") (+ 1 (current-column)))
+    (`(:after . "=")
+     (when (smie-rule-hanging-p) swift-indent-offset))
     (`(:before . "case")
      (cond
       ((smie-rule-parent-p "{")
