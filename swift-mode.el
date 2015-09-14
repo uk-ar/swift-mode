@@ -223,7 +223,7 @@
                 "<<" ">>" "??")))
 
 (defvar swift-smie--decl-specifier-regexp
-  "\\(?1:mutating\\|override\\|static\\|unowned\\|weak\\)")
+  "\\(?:mutating\\|class\\|override\\|static\\|unowned\\|weak\\)")
 
 (defvar swift-smie--access-modifier-regexp
   (regexp-opt '("private" "public" "internal")))
@@ -306,11 +306,43 @@ We try to constraint those lookups by reasonable number of lines.")
    ;;  (goto-char (match-end 0)) "OP")
 
    ((looking-at swift-smie--decl-specifier-regexp)
-    (goto-char (match-end 1)) "DECSPEC")
+    (goto-char (match-end 0)) "")
+
+   ;; ((looking-back (regexp-opt
+   ;;                 ;; swift-mode--fn-decl-keywords is better?
+   ;;                 (append swift-mode--type-decl-keywords '("func"))) (- (point) 9) t)
+   ;;  (goto-char (match-beginning 0))
+   ;;  (let ((tok (match-string-no-properties 0)))
+   ;;    ;; It should use `member' to avoid partial match
+   ;;    (while (string-match-p
+   ;;            (concat "\\(" swift-smie--decl-specifier-regexp
+   ;;                    "\\|" swift-smie--access-modifier-regexp "\\)")
+   ;;            (save-excursion (smie-default-backward-token)))
+   ;;      (smie-default-backward-token))
+   ;;    tok
+   ;;    ))
+
+   ;; ((looking-at swift-smie--decl-specifier-regexp)
+   ;;  (goto-char (match-end 0))
+   ;;  (let ((tok (match-string-no-properties 0)))
+   ;;    ;; should return swift-mode--type-decl-keywords or "func"
+   ;;    (when (string-match-p swift-smie--access-modifier-regexp
+   ;;                          (save-excursion
+   ;;                            (smie-default-forward-token)))
+   ;;      (smie-default-forward-token))
+   ;;    ;;swift-mode--type-decl-keywords
+   ;;    (if )
+   ;;    (save-excursion
+   ;;      (smie-default-forward-token))
+   ;;  )
 
    ((looking-at swift-smie--access-modifier-regexp)
     (goto-char (match-end 0))
     ;; should return swift-mode--type-decl-keywords or "func"
+    (when (string-match-p swift-smie--decl-specifier-regexp
+                          (save-excursion
+                            (smie-default-forward-token)))
+      (smie-default-forward-token))
     (smie-default-forward-token))
 
    ((looking-at "\\<default\\>")
@@ -362,17 +394,23 @@ We try to constraint those lookups by reasonable number of lines.")
                      (append swift-mode--type-decl-keywords '("func"))) (- (point) 9) t)
       (goto-char (match-beginning 0))
       (let ((tok (match-string-no-properties 0)))
-        (when (string-match-p swift-smie--access-modifier-regexp
-                              (save-excursion (smie-default-backward-token)))
+        ;; It should use `member' to avoid partial match
+        (while (string-match-p
+                (concat "\\(" swift-smie--decl-specifier-regexp
+                        "\\|" swift-smie--access-modifier-regexp "\\)")
+                (save-excursion (smie-default-backward-token)))
           (smie-default-backward-token))
         tok
         ))
-
+     ;; (string-match-p
+     ;;  (concat "\\(" swift-smie--decl-specifier-regexp
+     ;;          "\\|" swift-smie--access-modifier-regexp "\\)")
+     ;;  "public")
      ;; ((looking-back swift-smie--operators-regexp (- (point) 3) t)
      ;;  (goto-char (match-beginning 0)) "OP")
 
-     ((looking-back swift-smie--decl-specifier-regexp (- (point) 8) t)
-      (goto-char (match-beginning 1)) "DECSPEC")
+     ;; ((looking-back swift-smie--decl-specifier-regexp (- (point) 8) t)
+     ;;  (goto-char (match-beginning 1)) "DECSPEC")
 
      ((looking-back "\\<default\\>" (- (point) 9) t)
       (goto-char (match-beginning 0)) "case")
@@ -484,6 +522,8 @@ We try to constraint those lookups by reasonable number of lines.")
        ;;(class)
        ("case" exp "case-:" insts)
        ("return" exp)
+       ;;("func" exp "->" exp)
+       ("func" exp)
        )
       (insts (insts ";" insts) (inst)
              )
@@ -505,6 +545,7 @@ We try to constraint those lookups by reasonable number of lines.")
            ("(" exps ")")
            ("<T" exps "T>")
            (exp2 "in" exp2)
+           (exp2 "->" exp2)
            (id "." exp2)
            ;;(id ":" exp);; inherit
            )
@@ -543,6 +584,8 @@ We try to constraint those lookups by reasonable number of lines.")
 
     ;;(`(:after . "(") 10)
     ;;(`(:before . "(") (+ 1 (current-column)))
+    ;;(`(:before . "->") )
+    (`(:after . "->") (smie-rule-parent))
     (`(:after . "=")
      (when (smie-rule-hanging-p) swift-indent-offset))
     (`(:before . "case")
@@ -564,6 +607,10 @@ We try to constraint those lookups by reasonable number of lines.")
        swift-indent-offset
        )
      )
+    ;; (`(:before . "->")
+    ;;  (when (smie-rule-hanging-p) (smie-rule-parent swift-indent-offset)))
+    (`(:after . "->")
+     (when (smie-rule-hanging-p) (smie-rule-parent swift-indent-offset)))
     (`(:before . "in")
      (when (smie-rule-hanging-p) (smie-rule-parent)))
     ;;  (when (smie-rule-hanging-p) (smie-rule-parent swift-indent-offset)))
@@ -634,6 +681,7 @@ We try to constraint those lookups by reasonable number of lines.")
     (`(:after . "class") 0)
     (`(:after . "if") 0)
     (`(:after . "enum") 0)
+    (`(:after . "func") 0)
     ;;(`(:after . ":") (smie-rule-parent))
     ;;(`(:after . ":") 0)
     ;;(`(:after . "class") swift-indent-offset)
