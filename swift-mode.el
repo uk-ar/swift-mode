@@ -222,11 +222,18 @@
                 "*" "/" "%" "&*" "&/" "&%" "&"
                 "<<" ">>" "??")))
 
+
+(defvar swift-smie--decl-specifier
+  '("mutating" "class" "override" "static" "unowned" "weak"))
+
+(defvar swift-smie--access-modifier
+  '("private" "public" "internal"))
+
 (defvar swift-smie--decl-specifier-regexp
-  "\\(?:mutating\\|class\\|override\\|static\\|unowned\\|weak\\)")
+  (regexp-opt swift-smie--decl-specifier))
 
 (defvar swift-smie--access-modifier-regexp
-  (regexp-opt '("private" "public" "internal")))
+  (regexp-opt swift-smie--access-modifier))
 
 (defun swift-smie--implicit-semi-p ()
   (save-excursion
@@ -305,8 +312,8 @@ We try to constraint those lookups by reasonable number of lines.")
    ;; ((looking-at swift-smie--operators-regexp)
    ;;  (goto-char (match-end 0)) "OP")
 
-   ((looking-at swift-smie--decl-specifier-regexp)
-    (goto-char (match-end 0)) "")
+   ;; ((looking-at swift-smie--decl-specifier-regexp)
+   ;;  (goto-char (match-end 0)) "")
 
    ;; ((looking-back (regexp-opt
    ;;                 ;; swift-mode--fn-decl-keywords is better?
@@ -336,14 +343,18 @@ We try to constraint those lookups by reasonable number of lines.")
    ;;      (smie-default-forward-token))
    ;;  )
 
-   ((looking-at swift-smie--access-modifier-regexp)
-    (goto-char (match-end 0))
-    ;; should return swift-mode--type-decl-keywords or "func"
-    (when (string-match-p swift-smie--decl-specifier-regexp
-                          (save-excursion
-                            (smie-default-forward-token)))
+   ((or (looking-at swift-smie--access-modifier-regexp)
+        (looking-at swift-smie--decl-specifier-regexp))
+    (while (member
+            (save-excursion
+              (smie-default-forward-token))
+            (append swift-smie--access-modifier
+                    swift-smie--decl-specifier
+                    ;; swift-mode--fn-decl-keywords is better?
+                    swift-mode--type-decl-keywords '("func")))
       (smie-default-forward-token))
-    (smie-default-forward-token))
+    (save-excursion
+      (smie-default-backward-token)))
 
    ((looking-at "\\<default\\>")
     (goto-char (match-end 0)) "case")
@@ -561,7 +572,7 @@ We try to constraint those lookups by reasonable number of lines.")
     ;;'((assoc ":"))
     ;;'()
     )))
-;; 148 passed
+;; 150 passed
 (defun swift-smie-rules (kind token)
   (pcase (cons kind token)
     (`(:elem . basic) swift-indent-offset)
@@ -585,7 +596,13 @@ We try to constraint those lookups by reasonable number of lines.")
     ;;(`(:after . "(") 10)
     ;;(`(:before . "(") (+ 1 (current-column)))
     ;;(`(:before . "->") )
-    (`(:after . "->") (smie-rule-parent))
+    (`(:after . "->")
+     (if (smie-rule-hanging-p)
+         (smie-rule-parent swift-indent-offset)
+       (smie-rule-parent)))
+    ;; (`(:before . "->")
+    ;;  (when (smie-rule-hanging-p) (smie-rule-parent swift-indent-offset)))
+
     (`(:after . "=")
      (when (smie-rule-hanging-p) swift-indent-offset))
     (`(:before . "case")
@@ -607,10 +624,6 @@ We try to constraint those lookups by reasonable number of lines.")
        swift-indent-offset
        )
      )
-    ;; (`(:before . "->")
-    ;;  (when (smie-rule-hanging-p) (smie-rule-parent swift-indent-offset)))
-    (`(:after . "->")
-     (when (smie-rule-hanging-p) (smie-rule-parent swift-indent-offset)))
     (`(:before . "in")
      (when (smie-rule-hanging-p) (smie-rule-parent)))
     ;;  (when (smie-rule-hanging-p) (smie-rule-parent swift-indent-offset)))
