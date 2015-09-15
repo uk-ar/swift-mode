@@ -214,11 +214,18 @@
 (defvar swift-smie--operators-regexp
   (regexp-opt swift-smie--operators))
 
+
+(defvar swift-smie--decl-specifier
+  '("mutating" "class" "override" "static" "unowned" "weak"))
+
+(defvar swift-smie--access-modifier
+  '("private" "public" "internal"))
+
 (defvar swift-smie--decl-specifier-regexp
-  "\\(?1:mutating\\|override\\|static\\|unowned\\|weak\\)")
+  (regexp-opt swift-smie--decl-specifier))
 
 (defvar swift-smie--access-modifier-regexp
-  (regexp-opt '("private" "public" "internal")))
+  (regexp-opt swift-smie--access-modifier))
 
 (defun swift-smie--implicit-semi-p ()
   (save-excursion
@@ -295,13 +302,18 @@ We try to constraint those lookups by reasonable number of lines.")
     (goto-char (match-end 0))
     (if (looking-back "[[:space:]]>" 2 t) ">" "T>"))
 
-   ((looking-at swift-smie--decl-specifier-regexp)
-    (goto-char (match-end 1)) "DECSPEC")
-
-   ((looking-at swift-smie--access-modifier-regexp)
-    (goto-char (match-end 0))
-    ;; should return swift-mode--type-decl-keywords or "func"
-    (smie-default-forward-token))
+   ((or (looking-at swift-smie--access-modifier-regexp)
+        (looking-at swift-smie--decl-specifier-regexp))
+    (while (member
+            (save-excursion
+              (smie-default-forward-token))
+            (append swift-smie--access-modifier
+                    swift-smie--decl-specifier
+                    ;; swift-mode--fn-decl-keywords is better?
+                    swift-mode--type-decl-keywords '("func")))
+      (smie-default-forward-token))
+    (save-excursion
+      (smie-default-backward-token)))
 
    ((looking-at "\\<default\\>")
     (goto-char (match-end 0)) "case")
