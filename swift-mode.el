@@ -214,14 +214,16 @@
       )
     value))
 
-(defvar swift-smie--operators-regexp
-  (regexp-opt '("*=" "/=" "%=" "+=" "-=" "<<=" ">>=" "&=" "^=" "|=" "&&=" "||="
-                "<" "<=" ">" ">=" "==" "!=" "===" "!==" "~=" "||" "&&"
-                "is" "as" "as!" "as?" "..<" "..."
-                "+" "-" "&+" "&-" "|" "^"
-                "*" "/" "%" "&*" "&/" "&%" "&"
-                "<<" ">>" "??")))
+(defvar swift-smie--operators
+  '("*=" "/=" "%=" "+=" "-=" "<<=" ">>=" "&=" "^=" "|=" "&&=" "||="
+   "<" "<=" ">" ">=" "==" "!=" "===" "!==" "~=" "||" "&&"
+   "is" "as" "as!" "as?" "..<" "..."
+   "+" "-" "&+" "&-" "|" "^"
+   "*" "/" "%" "&*" "&/" "&%" "&"
+   "<<" ">>" "??"))
 
+(defvar swift-smie--operators-regexp
+  (regexp-opt swift-smie--operators))
 
 (defvar swift-smie--decl-specifier
   '("mutating" "class" "override" "static" "unowned" "weak"))
@@ -519,6 +521,7 @@ We try to constraint those lookups by reasonable number of lines.")
 
 (defconst swift-smie-grammar
   (smie-prec2->grammar
+   (smie-merge-prec2s
    (smie-bnf->prec2
     '((id)
       ;;(class ("class" id ":" exps))
@@ -568,12 +571,22 @@ We try to constraint those lookups by reasonable number of lines.")
     '((assoc "="))
     '((assoc "->"))
     ;;'((assoc "OP"))
-    '((assoc "{") (assoc ",") (assoc ":") (assoc "in") (assoc "OP"))
+    '((assoc "{") (assoc ",") (assoc ":") (assoc "in"))
     ;;'((assoc "{") (assoc ":") (left ",") (assoc "in") (assoc "OP"))
     ;;'((assoc ":"))
-
-    ;;'()
-    )))
+    )
+  (smie-precs->prec2
+   '((right "*=" "/=" "%=" "+=" "-=" "<<=" ">>=" "&="
+            "^=" "|=" "&&=" "||=" "=")                       ;; Assignment (Right associative, precedence level 90)
+     (left "||")                                             ;; Disjunctive (Left associative, precedence level 110)
+     (left "&&")                                             ;; Conjunctive (Left associative, precedence level 120)
+     (nonassoc "<" "<=" ">" ">=" "==" "!=" "===" "!==" "~=") ;; Comparative (No associativity, precedence level 130)
+     (nonassoc "is" "as" "as!" "as?")                        ;; Cast (No associativity, precedence level 132)
+     (nonassoc "..<" "...")                                  ;; Range (No associativity, precedence level 135)
+     (left "+" "-" "&+" "&-" "|" "^")                        ;; Additive (Left associative, precedence level 140)
+     (left "*" "/" "%" "&*" "&/" "&%" "&")                   ;; Multiplicative (Left associative, precedence level 150)
+     (nonassoc "<<" ">>")                                    ;; Exponentiative (No associativity, precedence level 160)
+     )))))
 ;; 155 passed
 (defun swift-smie-rules (kind token)
   (pcase (cons kind token)
@@ -582,12 +595,28 @@ We try to constraint those lookups by reasonable number of lines.")
     (`(:list-intro . "=") 0)
     (`(:list-intro . "?") 0)
     (`(:list-intro . ":") 0)
-    (`(:before . ".")
+    (`(:before . ".");; bol
      (when (smie-rule-bolp)
-       (if (smie-rule-parent-p "{")
-           (+ swift-indent-multiline-statement-offset
-              swift-indent-offset)
-         swift-indent-multiline-statement-offset)))
+       (smie-rule-parent
+        (if (smie-rule-parent-p "{")
+            (+ swift-indent-multiline-statement-offset
+               swift-indent-offset)
+          swift-indent-multiline-statement-offset))
+       ))
+    ;;(`(:after . "&")
+    ;;(`(:before . ,(or `"begin" `"(" `"{")))
+    (`(:after . ,(pred (lambda (token)
+                         (member token swift-smie--operators))))
+     (when (and (smie-rule-hanging-p)
+                ;;(not (smie-rule-parent-p "OP"))
+                )
+       ;;(smie-rule-parent
+        (if (smie-rule-parent-p "{")
+            (+ swift-indent-multiline-statement-offset
+               swift-indent-offset)
+          nil)))
+    ;;swift-indent-multiline-statement-offset)))
+    ;;)
     ;;(when (smie-rule-bolp) nil))
     ;; (`(:before . "(")
     ;;  (cond
