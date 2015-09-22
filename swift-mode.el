@@ -203,13 +203,16 @@
     )))
 
 (defun verbose-swift-smie-rules (kind token)
-  (let ((value (swift-smie-rules kind token)))
+  (let
+      ((str (format "sib:%s pare:%s hang:%s bol:%s"
+                    (ignore-errors (smie-rule-sibling-p))
+                    (ignore-errors smie--parent)
+                    (ignore-errors (smie-rule-hanging-p))
+                    (ignore-errors (smie-rule-bolp))))
+       (value (swift-smie-rules kind token)))
     (unless (eq this-command 'ert-run-tests-interactively)
-      (message "%s '%s'; sib:%s pare:%s hang:%s bol:%s == %s" kind token
-               (ignore-errors (smie-rule-sibling-p))
-               (ignore-errors smie--parent)
-               (ignore-errors (smie-rule-hanging-p))
-               (ignore-errors (smie-rule-bolp))
+      (message "%s '%s'; %s == %s" kind token
+               str
                value)
       )
     value))
