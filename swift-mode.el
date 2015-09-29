@@ -265,7 +265,7 @@
                   ;; Not a generic type
                   (not (looking-back "[[:upper:]]>" (- (point) 2) t)))
              )))
-  nil)
+  )
 
 (defun swift-smie--forward-token-debug ()
   (let ((token (swift-smie--forward-token)))
@@ -533,10 +533,10 @@ We try to constraint those lookups by reasonable number of lines.")
       ;;(class ("class" id ":" exps))
       (inst ;;(id ":=" exp)
        (exp)
-       ("if" exp)
+       ;;("if" exp)
        ("case" exp "case-:" insts)
-       ("return" exp)
-       ("func" exp)
+       ;;("return" exp)
+       ;;("func" exp)
        ;;(exps)
        ;;("class" id ":" exps)
        ;; ("enum" id ":" exps);; conflict with let foo : ab = bar
@@ -585,10 +585,17 @@ We try to constraint those lookups by reasonable number of lines.")
       ;;  (exp2)
       ;;  (params "," exp2))
       )
+    ;; '((nonassoc "in") (assoc ";") (right " @ ")
+    ;;   (assoc ",") (right "="))
+    ;; '((assoc "when"))
+    ;; '((assoc "elsif"))
+    ;; '((assoc "rescue" "ensure"))
+    ;; '((assoc ","))
+    ;; ruby-mode
     '((assoc ";") (assoc "case-:"))
     ;;'((assoc "?" ":"))
     ;;'((assoc "->" "in" "."))
-    '((left ",")
+    '((assoc ",")
       (right "=");; for (a : NSString = 1 , b : NSString = 2)
       (assoc "->" "in" ".")
       (right "?" ":")
@@ -609,6 +616,7 @@ We try to constraint those lookups by reasonable number of lines.")
      (assoc "let")
      )))))
 ;; 155 passed
+;; 141 passed
 ;;(defun swift-smie-rules (kind token) ())
 (defun swift-rule-parent-p (&rest parents)
   (save-excursion
@@ -747,8 +755,12 @@ We try to constraint those lookups by reasonable number of lines.")
       ;; multi line class inherit
       ;; (if (and swift-indent-hanging-comma-offset (smie-rule-parent-p "class" "case"))
       ;;     (smie-rule-parent swift-indent-hanging-comma-offset))
-      ;; ((swift-rule-parent-p "class" "enum")
-      ;;  swift-indent-offset)
+      ((swift-rule-parent-p "class" "enum")
+       ;;swift-indent-offset
+       (save-excursion
+         (smie-backward-sexp ";")
+         (swift-smie--forward-token)
+         (cons 'column (+ 1 (current-column)))))
       ((and (smie-rule-hanging-p)
             (smie-rule-parent-p "case");;":"
             swift-indent-hanging-comma-offset)
@@ -771,6 +783,8 @@ We try to constraint those lookups by reasonable number of lines.")
     ;;   ;;((smie-rule-hanging-p) (smie-rule-parent swift-indent-offset))
     ;;   (t (smie-rule-parent))
     ;;   ))
+    (`(:before . "->")
+     (smie-rule-parent))
     (`(:before . ,(or `"{"));;
      (cond
       ;; ((smie-rule-parent-p "(")
