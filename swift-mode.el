@@ -572,6 +572,7 @@ We try to constraint those lookups by reasonable number of lines.")
            (exp2 "in" exp2)
            (exp2 "->" exp2)
            (exp2 "." id)
+           ;;("func" )
            ;;(exp2 "?" exp2 ":" exp2)
            ;;(id ":" exp2)
            )
@@ -598,6 +599,7 @@ We try to constraint those lookups by reasonable number of lines.")
     ;;'((assoc "->" "in" "."))
     '((assoc ",")
       (right "=");; for (a : NSString = 1 , b : NSString = 2)
+      ;;(nonassoc "func")
       (assoc "->" "in" ".")
       (right "?" ":")
       ;;(assoc "let" "return")
@@ -606,7 +608,7 @@ We try to constraint those lookups by reasonable number of lines.")
     )
   (smie-precs->prec2
    '(
-     (assoc "return")
+     (nonassoc "return" "func")
      (right "*=" "/=" "%=" "+=" "-=" "<<=" ">>=" "&="
             "^=" "|=" "&&=" "||=" "=")                       ;; Assignment (Right associative, precedence level 90)
      (assoc "?")
@@ -618,10 +620,10 @@ We try to constraint those lookups by reasonable number of lines.")
      (left "+" "-" "&+" "&-" "|" "^")                        ;; Additive (Left associative, precedence level 140)
      (left "*" "/" "%" "&*" "&/" "&%" "&")                   ;; Multiplicative (Left associative, precedence level 150)
      (nonassoc "<<" ">>")                                    ;; Exponentiative (No associativity, precedence level 160)
-     ;;(assoc "let")
+     ;;(assoc "func")
      )))))
 ;; 155 passed
-;; 145 passed
+;; 147 passed
 ;;(defun swift-smie-rules (kind token) ())
 (defun swift-rule-parent-p (&rest parents)
   (save-excursion
