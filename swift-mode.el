@@ -535,7 +535,7 @@ We try to constraint those lookups by reasonable number of lines.")
        (exp)
        ;;("if" exp)
        ("case" exp "case-:" insts)
-       ("let")
+       ;;("let")
        ;;("return" exp)
        ;;("func" exp)
        ;;(exps)
@@ -606,7 +606,7 @@ We try to constraint those lookups by reasonable number of lines.")
     )
   (smie-precs->prec2
    '(
-     (assoc "let" "return")
+     (assoc "return")
      (right "*=" "/=" "%=" "+=" "-=" "<<=" ">>=" "&="
             "^=" "|=" "&&=" "||=" "=")                       ;; Assignment (Right associative, precedence level 90)
      (assoc "?")
@@ -618,9 +618,10 @@ We try to constraint those lookups by reasonable number of lines.")
      (left "+" "-" "&+" "&-" "|" "^")                        ;; Additive (Left associative, precedence level 140)
      (left "*" "/" "%" "&*" "&/" "&%" "&")                   ;; Multiplicative (Left associative, precedence level 150)
      (nonassoc "<<" ">>")                                    ;; Exponentiative (No associativity, precedence level 160)
+     ;;(assoc "let")
      )))))
 ;; 155 passed
-;; 143 passed
+;; 145 passed
 ;;(defun swift-smie-rules (kind token) ())
 (defun swift-rule-parent-p (&rest parents)
   (save-excursion
@@ -680,7 +681,7 @@ We try to constraint those lookups by reasonable number of lines.")
     ;;  (when (smie-rule-hanging-p) (smie-rule-parent swift-indent-offset)))
 
     (`(:after . "=")
-     ;;(when (smie-rule-hanging-p) swift-indent-offset)
+     (when (smie-rule-hanging-p) swift-indent-offset)
      ;;(smie-rule-parent)
      )
     ;; (`(:before . "=")
