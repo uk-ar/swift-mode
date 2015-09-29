@@ -543,6 +543,7 @@ We try to constraint those lookups by reasonable number of lines.")
        ;; ("enum" id ":" exps);; conflict with let foo : ab = bar
        ;;("class" exps)
        ;;("class" class-id "{" insts "}")
+       ;;("func")
        )
       (insts (insts ";" insts) (inst)
              )
@@ -599,7 +600,6 @@ We try to constraint those lookups by reasonable number of lines.")
     ;;'((assoc "->" "in" "."))
     '((assoc ",")
       (right "=");; for (a : NSString = 1 , b : NSString = 2)
-      ;;(nonassoc "func")
       (assoc "->" "in" ".")
       (right "?" ":")
       ;;(assoc "let" "return")
@@ -623,7 +623,7 @@ We try to constraint those lookups by reasonable number of lines.")
      ;;(assoc "func")
      )))))
 ;; 155 passed
-;; 147 passed
+;; 148 passed
 ;;(defun swift-smie-rules (kind token) ())
 (defun swift-rule-parent-p (&rest parents)
   (save-excursion
@@ -661,10 +661,11 @@ We try to constraint those lookups by reasonable number of lines.")
                             swift-smie--operators))
                 )
        ;;(smie-rule-parent
-        (if (smie-rule-parent-p "{")
-            (+ swift-indent-multiline-statement-offset
-               swift-indent-offset)
-          nil)))
+       (if (smie-rule-parent-p "{")
+           swift-indent-multiline-statement-offset
+         ;; (+ swift-indent-multiline-statement-offset
+         ;;       swift-indent-offset)
+         nil)))
     ;;swift-indent-multiline-statement-offset)))
     ;;)
     ;;(when (smie-rule-bolp) nil))
