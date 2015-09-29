@@ -535,6 +535,7 @@ We try to constraint those lookups by reasonable number of lines.")
        (exp)
        ;;("if" exp)
        ("case" exp "case-:" insts)
+       ("let")
        ;;("return" exp)
        ;;("func" exp)
        ;;(exps)
@@ -599,12 +600,16 @@ We try to constraint those lookups by reasonable number of lines.")
       (right "=");; for (a : NSString = 1 , b : NSString = 2)
       (assoc "->" "in" ".")
       (right "?" ":")
+      ;;(assoc "let" "return")
       )
     ;;'((assoc ","))
     )
   (smie-precs->prec2
-   '((right "*=" "/=" "%=" "+=" "-=" "<<=" ">>=" "&="
+   '(
+     (assoc "let" "return")
+     (right "*=" "/=" "%=" "+=" "-=" "<<=" ">>=" "&="
             "^=" "|=" "&&=" "||=" "=")                       ;; Assignment (Right associative, precedence level 90)
+     (assoc "?")
      (left "||")                                             ;; Disjunctive (Left associative, precedence level 110)
      (left "&&")                                             ;; Conjunctive (Left associative, precedence level 120)
      (nonassoc "<" "<=" ">" ">=" "==" "!=" "===" "!==" "~=") ;; Comparative (No associativity, precedence level 130)
@@ -613,10 +618,9 @@ We try to constraint those lookups by reasonable number of lines.")
      (left "+" "-" "&+" "&-" "|" "^")                        ;; Additive (Left associative, precedence level 140)
      (left "*" "/" "%" "&*" "&/" "&%" "&")                   ;; Multiplicative (Left associative, precedence level 150)
      (nonassoc "<<" ">>")                                    ;; Exponentiative (No associativity, precedence level 160)
-     (assoc "let")
      )))))
 ;; 155 passed
-;; 141 passed
+;; 143 passed
 ;;(defun swift-smie-rules (kind token) ())
 (defun swift-rule-parent-p (&rest parents)
   (save-excursion
@@ -725,7 +729,7 @@ We try to constraint those lookups by reasonable number of lines.")
     ;;      )))
     (`(:after . ":")
      (cond
-      ((and (smie-rule-parent-p "class" "enum")
+      ((and (swift-rule-parent-p "class" "enum")
             swift-indent-hanging-comma-offset)
        (smie-rule-parent swift-indent-hanging-comma-offset))
       ((smie-rule-parent-p "class" "enum")
@@ -745,7 +749,9 @@ We try to constraint those lookups by reasonable number of lines.")
        (swift-smie--forward-token);; end of class
        (cons 'column (+ 1 (current-column)))
        ;;swift-indent-offset
-       )))
+       )
+      ;; (t (swift-rule-parent));; conflict with conditional-operator/9
+      ))
     (`(:before . ",")
      ;; (when (smie-rule-parent-p ":")
      ;;   (smie-rule-parent))
@@ -753,8 +759,10 @@ We try to constraint those lookups by reasonable number of lines.")
     (`(:after . ",")
      (cond
       ;; multi line class inherit
-      ;; (if (and swift-indent-hanging-comma-offset (smie-rule-parent-p "class" "case"))
-      ;;     (smie-rule-parent swift-indent-hanging-comma-offset))
+      ((and
+        (swift-rule-parent-p "class" "case")
+        swift-indent-hanging-comma-offset)
+       (smie-rule-parent swift-indent-hanging-comma-offset))
       ((swift-rule-parent-p "class" "enum")
        ;;swift-indent-offset
        (save-excursion
