@@ -794,19 +794,19 @@ class Foo:
 (check-indentation indents-class-declaration/7
                    "
 class Foo: Bar<A, B,
-|C>
+|C>{}
 " "
 class Foo: Bar<A, B,
-               |C>
+               |C>{}
 ")
 
 (check-indentation indents-class-declaration/8
                    "
 class Foo<A: B<C>>:
-                   |Bar
+                   |Bar{}
 " "
 class Foo<A: B<C>>:
-    |Bar
+    |Bar{}
 ")
 
 (check-indentation indents-class-declaration/9
@@ -1030,6 +1030,19 @@ class Foo: Bar {
     override func Foo() {
         |foo
     }
+}
+")
+
+(check-indentation indents-func-declaration/13
+  "
+internal class B: A {
+    override internal func someMethod() {
+    |}
+}
+" "
+internal class B: A {
+    override internal func someMethod() {
+    |}
 }
 ")
 
