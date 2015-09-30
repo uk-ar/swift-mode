@@ -1681,7 +1681,7 @@ let foo = bar >
 )
 
 (check-indentation indents-multiline-operators-only-once/2
-  "
+                   "
 1 +
   2 * 5 +
 |3
