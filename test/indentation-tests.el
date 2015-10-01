@@ -1035,15 +1035,13 @@ class Foo: Bar {
 
 (check-indentation indents-func-declaration/13
   "
-internal class B: A {
-    override internal func someMethod() {
+@foo public class Foo {
+    a
     |}
-}
 " "
-internal class B: A {
-    override internal func someMethod() {
-    |}
-}
+@foo public class Foo {
+    a
+|}
 ")
 
 (check-indentation indents-protocol-declaration/1
