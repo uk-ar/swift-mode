@@ -312,21 +312,22 @@ We try to constraint those lookups by reasonable number of lines.")
           (if (looking-back "\\(guard.*\\)" (line-beginning-position) t)
               "elseguard"
             "else"))
-         ((member
-           tok
-           (append swift-smie--access-modifier
-                   swift-smie--decl-specifier))
-          (while (member
-                  (save-excursion
-                    (smie-default-forward-token))
+         ((member tok
+                  (append swift-mode--type-decl-keywords '("func")))
+          (if (member
+               (save-excursion
+                 (smie-default-forward-token))
+               (append swift-smie--access-modifier
+                       swift-smie--decl-specifier;; class
+                       ;; swift-mode--fn-decl-keywords is better?
+                       swift-mode--type-decl-keywords '("func")))
+              (swift-smie--forward-token)
+            tok))
+         ((member tok
                   (append swift-smie--access-modifier
-                          swift-smie--decl-specifier
-                          ;; swift-mode--fn-decl-keywords is better?
-                          swift-mode--type-decl-keywords '("func")))
-            (smie-default-forward-token))
-          (save-excursion
-            (smie-default-backward-token)))
-        (t tok))))
+                          swift-smie--decl-specifier))
+          (swift-smie--forward-token))
+         (t tok))))
    ))
    ))
 
