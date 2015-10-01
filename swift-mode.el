@@ -116,7 +116,7 @@
 
        (func-body (insts) ("return" exp))
        (func (func-decl "{" func-body "}"))
-       (func-decl ("DECSPEC" "func" func-header)
+       (func-decl ("func" func-header)
                   (func-decl "->" type))
        (func-header (id "(" func-params ")"))
        (func-param (decl-exp) (decl-exp "=" id) ("..."))
@@ -221,12 +221,6 @@
 (defvar swift-smie--access-modifier
   '("private" "public" "internal"))
 
-(defvar swift-smie--decl-specifier-regexp
-  (regexp-opt swift-smie--decl-specifier))
-
-(defvar swift-smie--access-modifier-regexp
-  (regexp-opt swift-smie--access-modifier))
-
 (defun swift-smie--implicit-semi-p ()
   (save-excursion
     (not (or (memq (char-before) '(?\{ ?\[ ?, ?. ?: ?= ?\())
@@ -302,19 +296,6 @@ We try to constraint those lookups by reasonable number of lines.")
     (goto-char (match-end 0))
     (if (looking-back "[[:space:]]>" 2 t) ">" "T>"))
 
-   ((or (looking-at swift-smie--access-modifier-regexp)
-        (looking-at swift-smie--decl-specifier-regexp))
-    (while (member
-            (save-excursion
-              (smie-default-forward-token))
-            (append swift-smie--access-modifier
-                    swift-smie--decl-specifier
-                    ;; swift-mode--fn-decl-keywords is better?
-                    swift-mode--type-decl-keywords '("func")))
-      (smie-default-forward-token))
-    (save-excursion
-      (smie-default-backward-token)))
-
    ((looking-at "\\<default\\>")
     (goto-char (match-end 0)) "case")
 
@@ -331,7 +312,21 @@ We try to constraint those lookups by reasonable number of lines.")
           (if (looking-back "\\(guard.*\\)" (line-beginning-position) t)
               "elseguard"
             "else"))
-         (t tok))))
+         ((member
+           tok
+           (append swift-smie--access-modifier
+                   swift-smie--decl-specifier))
+          (while (member
+                  (save-excursion
+                    (smie-default-forward-token))
+                  (append swift-smie--access-modifier
+                          swift-smie--decl-specifier
+                          ;; swift-mode--fn-decl-keywords is better?
+                          swift-mode--type-decl-keywords '("func")))
+            (smie-default-forward-token))
+          (save-excursion
+            (smie-default-backward-token)))
+        (t tok))))
    ))
    ))
 
@@ -362,20 +357,6 @@ We try to constraint those lookups by reasonable number of lines.")
       (goto-char (match-beginning 0))
       (if (looking-back "[[:space:]]" 1 t) ">" "T>"))
 
-     ((looking-back (regexp-opt
-                     ;; swift-mode--fn-decl-keywords is better?
-                     (append swift-mode--type-decl-keywords '("func"))) (- (point) 9) t)
-      (goto-char (match-beginning 0))
-      (let ((tok (match-string-no-properties 0)))
-        (when (string-match-p swift-smie--access-modifier-regexp
-                              (save-excursion (smie-default-backward-token)))
-          (smie-default-backward-token))
-        tok
-        ))
-
-     ((looking-back swift-smie--decl-specifier-regexp (- (point) 8) t)
-      (goto-char (match-beginning 1)) "DECSPEC")
-
      ((looking-back "\\<default\\>" (- (point) 9) t)
       (goto-char (match-beginning 0)) "case")
 
@@ -392,7 +373,16 @@ We try to constraint those lookups by reasonable number of lines.")
             (if (looking-back "\\(guard.*\\)" (line-beginning-position) t)
                 "elseguard"
               "else"))
-           (t tok))))
+           ((member tok (append swift-mode--type-decl-keywords '("func")))
+            (let ((tok tok))
+              (while
+                  (member
+                   (save-excursion (smie-default-backward-token))
+                   (append swift-smie--access-modifier
+                           swift-smie--decl-specifier))
+                (smie-default-backward-token))
+              tok))
+          (t tok))))
      )))
 
 (defun swift-smie-rules (kind token)
