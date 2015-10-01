@@ -246,7 +246,7 @@
              ;; Characters placed on the second line in multi-line expression
              (save-excursion
                (forward-comment (buffer-size))
-               (looking-at "[.?:,]"))
+               (looking-at "[.?:]"))
              ;; Operators placed on the second line in multi-line expression
              ;; Should respect here possible comments strict before the linebreak
              (save-excursion
@@ -256,8 +256,7 @@
              (and (looking-back swift-smie--operators-regexp (- (point) 3) t)
                   ;; Not a generic type
                   (not (looking-back "[[:upper:]]>" (- (point) 2) t)))
-             )))
-  )
+             ))))
 
 (defun swift-smie--forward-token-debug ()
   (let ((token (swift-smie--forward-token)))
@@ -328,7 +327,7 @@ We try to constraint those lookups by reasonable number of lines.")
    (t (let ((tok (smie-default-forward-token)))
         (cond
          ((equal tok "case")
-          (if (looking-at "\\([\n\t ]\\|[^}]\\)+?\\(where.*[,]\\|:\\)")
+          (if (looking-at "\\([\n\t ]\\|.\\)+?\\(where.*[,]\\|:\\)")
               "case"
             "ecase"))
          ((equal tok "else")
@@ -386,7 +385,7 @@ We try to constraint those lookups by reasonable number of lines.")
      (t (let ((tok (smie-default-backward-token)))
           (cond
            ((equal tok "case")
-            (if (looking-at "\\([\n\t ]\\|[^}]\\)+?\\(where.*[,]\\|:\\)")
+            (if (looking-at "\\([\n\t ]\\|.\\)+?\\(where.*[,]\\|:\\)")
                 "case"
               "ecase"))
            ((equal tok "else")
@@ -477,76 +476,37 @@ We try to constraint those lookups by reasonable number of lines.")
    (smie-merge-prec2s
    (smie-bnf->prec2
     '((id)
-      ;; (class-id ;;(id ":" exp)
-      ;;  (id ":" exps)
-      ;;  (id))
-      ;;(class ("class" id ":" exps))
-      (inst ;;(id ":=" exp)
+      (inst
        (exp)
-       ;;("if" exp)
-       ;;("let")
-       ;;("return" exp)
-       ;;("func" exp)
-       ;;(exps)
-       ;;("class" id ":" exps)
-       ;; ("enum" id ":" exps);; conflict with let foo : ab = bar
-       ;;("class" exps)
-       ;;("class" class-id "{" insts "}")
-       ;;("func")
        )
       (insts
        (inst)
        (insts ";" insts)
        (insts "case" exp "case-:" insts)
        )
-      ;;(class (insts "class" insts))
-      ;;(inherit (id ":" exp))
       ;; (exp  (exp1) (exp "," exp) (exp "=" exp)
       ;;       (id " @ " exp))
       ;; (exp1 (exp2) (exp2 "?" exp1 ":" exp1))
       ;; (exp2 (exp3) (exp3 "." exp2))
-      ;;(exp1 (exp) (exp "?" exp1 ":" exp1))
       (exp (exp1)
            (exp "=" exp)
            (exp "," exp)
            )
       (exp1 (exp2)
-            ;;(exp2 ":" exps)
             (exp2 "?" exp2 ":" exp2)
             (id ":" exp2)
-            ;;(exp2 "=" exp2)
             )
       (exp2
-       (exps)
            ("{" insts "}")
            ("(" exp ")")
            ("<T" exp "T>")
-           ;;(exp2 "=" exp2)
            (exp2 "in" exp2)
            (exp2 "->" exp2)
            (exp2 "." id)
-           ;;("func" )
-           ;;(exp2 "?" exp2 ":" exp2)
-           ;;(id ":" exp2)
+           (exp2)
            )
-      ;; (exp3
-      ;;  (exps)
-      ;;  ("{" insts "}")
-      ;;  ("(" exp ")")
-      ;;  ("<T" exp "T>")
-      ;;  (exp2 "." id)
-      ;;  )
-      ;; (exps
-      ;;  (exp)
-      ;;  ;;(id ":" exp1)
-      ;;  ;;(id ":" id "=" id)
-      ;;  (exps "," exps)
-      ;;  )
-      ;; (params
-      ;;  (id ":" exp2)
-      ;;  (exp2)
-      ;;  (params "," exp2))
       )
+    ;; ruby-mode
     ;; '((nonassoc "in") (assoc ";") (right " @ ")
     ;;   (assoc ",") (right "="))
     ;; '((assoc "when"))
@@ -555,16 +515,9 @@ We try to constraint those lookups by reasonable number of lines.")
     ;; '((assoc ","))
     ;; ruby-mode
     '((assoc "case" "case-:") (assoc ";"))
-    ;;'((assoc "?" ":"))
-    ;;'((assoc "->" "in" "."))
-    '((assoc ",")
-      (right "=");; for (a : NSString = 1 , b : NSString = 2)
-      (assoc "in");;"."
-      (assoc "->");;"."
-      (right "?" ":")
-      ;;(assoc "let" "return")
-      )
-    ;;'((assoc ","))
+    '((assoc ",") (right "="))
+    '((right "?" ":"))
+    '((assoc "in") (assoc "->") (assoc "."))
     )
   (smie-precs->prec2
    '(
@@ -586,32 +539,32 @@ We try to constraint those lookups by reasonable number of lines.")
      )))))
 ;; 165 passed
 ;;(defun swift-smie-rules (kind token) ())
-(defun swift-rule-parent-p (&rest parents)
+(defun swift-rule-declaration-p (&rest parents)
   (save-excursion
     (smie-backward-sexp ";")
     (member (swift-smie--forward-token) parents)
     ))
 
-(defun swift-rule-parent ()
-  (save-excursion
-    (smie-backward-sexp ";")
-    (cons 'column (current-column))
-    ))
-
 (defun swift-smie-rules (kind token)
   (pcase (cons kind token)
     (`(:elem . basic) swift-indent-offset)
-    ;;(`(,_ . ",") (smie-rule-separator kind))
-    (`(:list-intro . "=") 0)
-    (`(:list-intro . "?") 0)
-    (`(:list-intro . ":") 0)
+
+    ;; Indentation rules for switch statements
+    (`(:before . "case")
+     (if (smie-rule-parent-p "{")
+         (smie-rule-parent swift-indent-switch-case-offset)))
+    (`(:before . "case-:") (smie-rule-parent swift-indent-offset))
+
+    ;; Apply swift-indent-multiline-statement-offset only if
+    ;; - if is a first token on the line
     (`(:before . ".")
      (when (smie-rule-bolp)
        (if (smie-rule-parent-p "{")
            (+ swift-indent-offset swift-indent-multiline-statement-offset)
          swift-indent-multiline-statement-offset)))
-    ;;(`(:after . "&")
-    ;;(`(:before . ,(or `"begin" `"(" `"{")))
+
+    ;; Apply swift-indent-multiline-statement-offset if
+    ;; operator is the last symbol on the line
     (`(:before . ,(pred (lambda (token)
                           (member token swift-smie--operators))))
      (when (and (smie-rule-hanging-p)
@@ -619,181 +572,73 @@ We try to constraint those lookups by reasonable number of lines.")
        (if (smie-rule-parent-p "{")
            (+ swift-indent-offset swift-indent-multiline-statement-offset)
          swift-indent-multiline-statement-offset)))
-    ;;swift-indent-multiline-statement-offset)))
-    ;;)
-    ;;(when (smie-rule-bolp) nil))
-    ;; (`(:before . "(")
-    ;;  (cond
-    ;;   ;;((smie-rule-parent-p ".") (+ 1 (current-column)))
-    ;;   ((smie-rule-parent-p ".") 0)
-    ;;   (t (smie-rule-parent)))
-    ;;   )
 
-    (`(:after . "->")
-     (if (smie-rule-hanging-p)
-         (smie-rule-parent swift-indent-offset)
-       (smie-rule-parent)))
-    ;; (`(:before . "->")
-    ;;  (when (smie-rule-hanging-p) (smie-rule-parent swift-indent-offset)))
-
-    (`(:after . "=")
-     (when (smie-rule-hanging-p) swift-indent-offset)
-     ;;(smie-rule-parent)
-     )
-    ;; (`(:before . "=")
-    ;;  ;;(when (smie-rule-hanging-p) swift-indent-offset)
-    ;;  (smie-rule-parent)
-    ;;  )
-    (`(:after . "case-:")
-     swift-indent-offset)
-    ;; (`(:before . "case-:")
-    ;;  swift-indent-offset)
-    (`(:before . "case")
-     (cond
-      ((smie-rule-parent-p "{")
-       (smie-rule-parent swift-indent-switch-case-offset))
-      ((smie-rule-parent-p ";")
-       (smie-rule-parent
-        (- swift-indent-switch-case-offset swift-indent-offset)
-        ))
-      ((smie-rule-parent-p "case-:")
-       (smie-rule-parent))
-      ))
-    ;; hanging
-    (`(:after . "(") (smie-rule-parent swift-indent-offset))
-    (`(:before . "(");; bol
-     (if (smie-rule-parent-p "func")
-         nil
-       (smie-rule-parent)
-       ))
-    ;;(`(:after . "in") (smie-rule-parent swift-indent-offset))
-    ;; (`(:after . "in")
-    ;;  (when (smie-rule-hanging-p)
-    ;;    ;;(smie-rule-parent)
-    ;;    swift-indent-offset
-    ;;    )
-    ;;  )
+    ;; "in" token in closure
     (`(:after . "in")
      (if (smie-rule-parent-p "{")
          (smie-rule-parent swift-indent-offset)
-       (smie-rule-parent 0)))
-    ;; (`(:before . "in")
-    ;;  (when (smie-rule-hanging-p) (smie-rule-parent)))
-    ;;  (when (smie-rule-hanging-p) (smie-rule-parent swift-indent-offset)))
-    ;; (`(:before . ":")
-    ;;  (when (smie-rule-parent-p "class")
-    ;;    (if swift-indent-hanging-comma-offset
-    ;;        (smie-rule-parent swift-indent-hanging-comma-offset)
-    ;;      6 ;; same as class
-    ;;      )))
-    ;; (`(:after . ":")
-    ;;  (when (smie-rule-parent-p "class" "enum")
-    ;;    (if swift-indent-hanging-comma-offset
-    ;;        (smie-rule-parent swift-indent-hanging-comma-offset)
-    ;;      -2 ;; for compatibility
-    ;;      )))
+       (smie-rule-parent)))
+
+    ;; custom
+    (`(:after . "->")
+     (if (smie-rule-hanging-p)
+         (smie-rule-parent swift-indent-offset);;for func foo() -> Bar
+       (smie-rule-parent)))
+
+    (`(:after . "=")
+     (when (smie-rule-hanging-p) swift-indent-offset))
+
+    (`(:after . "(") (smie-rule-parent swift-indent-offset))
+    (`(:before . "(")
+     (unless (smie-rule-parent-p "func")
+       (smie-rule-parent)))
+
     (`(:after . ":")
      (cond
-      ((and (swift-rule-parent-p "class" "enum")
+      ((and (swift-rule-declaration-p "class" "enum")
             swift-indent-hanging-comma-offset)
        (smie-rule-parent swift-indent-hanging-comma-offset))
-      ((smie-rule-parent-p "class" "enum")
-       nil)
-      ((swift-rule-parent-p "class" "enum")
+      ((swift-rule-declaration-p "class" "enum")
        swift-indent-offset)
       (t 0)
       ))
+
     (`(:before . ":")
      (cond
       ((and (smie-rule-parent-p "class" "enum")
             swift-indent-hanging-comma-offset)
        (smie-rule-parent swift-indent-hanging-comma-offset))
-      ((and ;;(smie-rule-parent-p "class" "enum")
-            (not (smie-rule-hanging-p)))
-       (goto-char (cadr (smie-indent--parent)))
-       (swift-smie--forward-token);; end of class
-       (cons 'column (+ 1 (current-column)))
-       ;;swift-indent-offset
-       )
-      ;; (t (swift-rule-parent));; conflict with conditional-operator/9
       ))
-    (`(:before . ",")
-     ;; (when (smie-rule-parent-p ":")
-     ;;   (smie-rule-parent))
-     )
+
     (`(:after . ",")
      (cond
       ;; multi line class inherit
       ((and
-        (swift-rule-parent-p "class" "case")
+        (swift-rule-declaration-p "class" "case")
         swift-indent-hanging-comma-offset)
        (smie-rule-parent swift-indent-hanging-comma-offset))
-      ((swift-rule-parent-p "class" "enum")
+      ((swift-rule-declaration-p "class" "enum")
        ;;swift-indent-offset
        (save-excursion
          (smie-backward-sexp ";")
          (swift-smie--forward-token)
          (cons 'column (+ 1 (current-column)))))
       ((and (smie-rule-hanging-p)
-            (smie-rule-parent-p "case");;":"
+            (smie-rule-parent-p "case")
             swift-indent-hanging-comma-offset)
        ;;(smie-rule-parent swift-indent-offset)
-       (smie-rule-parent swift-indent-hanging-comma-offset)
-       )
-      ;; ((and (smie-rule-hanging-p)
-      ;;       (smie-rule-parent-p ":");;":"
-      ;;       )
-      ;;  nil
-      ;;  )
-      ;; ;; multi func param list
-      ;; ((and (smie-rule-hanging-p)
-      ;;       (smie-rule-parent-p "("))
-      ;;  1)
-      )
-     )
-    ;; (`(:before . ",")
-    ;;  (cond
-    ;;   ;;((smie-rule-hanging-p) (smie-rule-parent swift-indent-offset))
-    ;;   (t (smie-rule-parent))
-    ;;   ))
-    (`(:before . "->")
-     (smie-rule-parent))
+       (smie-rule-parent swift-indent-hanging-comma-offset))))
+
     (`(:before . ,(or `"{"));;
      (cond
-      ;; ((smie-rule-parent-p "(")
-      ;;  10)
       ((smie-rule-prev-p "(") 1)
       ((smie-rule-prev-p ":") (smie-rule-parent))
-      ;; ((and (smie-rule-parent-p "," ":")
-      ;;       swift-indent-hanging-comma-offset)
-      ;;  (smie-rule-parent
-      ;;   (- swift-indent-hanging-comma-offset)))
-      ((swift-rule-parent-p "class")
-       (swift-rule-parent))
-      ((smie-rule-parent-p "," ":");;
-       (smie-backward-sexp ",")
-       ;;(smie-backward-sexp 'halfsexp)
-       ;;(backward-sexp 1);;go to class
-       (cons 'column (current-column)))
-
+      ((swift-rule-declaration-p "class" "enum")
+        (save-excursion
+          (smie-backward-sexp ";")
+          (cons 'column (current-column))))
       ((smie-rule-hanging-p) (smie-rule-parent))
-      ;;(t swift-indent-offset)
-      ;;((smie-rule-prev-p ":") (smie-rule-parent))
-      ;;((smie-rule-prev-p ":") (smie-rule-parent swift-indent-offset))
-      ;;((smie-rule-parent-p "(") (smie-rule-parent));; swift-indent-offset))      ;;(smie-rule-parent swift-indent-offset));;
-      ;;((smie-rule-prev-p ":") (smie-rule-parent)
-      ;;((smie-rule-prev-p ":") 0)
       ))
-    ;; (`(:before . ,(or `":"));;
-    ;;  (smie-rule-parent))
-    ;;(`(:after . ":") 0)
-    (`(:after . "class") 0)
-    (`(:after . "if") 0)
-    (`(:after . "enum") 0)
-    (`(:after . "func") 0)
-    ;;(`(:after . ":") (smie-rule-parent))
-    ;;(`(:after . ":") 0)
-    ;;(`(:after . "class") swift-indent-offset)
     ))
 
 ;;; Font lock
