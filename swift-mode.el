@@ -305,19 +305,6 @@ We try to constraint those lookups by reasonable number of lines.")
     (goto-char (match-end 0))
     (if (looking-back "[[:space:]]>" 2 t) ">" "T>"))
 
-   ((or (looking-at swift-smie--access-modifier-regexp)
-        (looking-at swift-smie--decl-specifier-regexp))
-    (while (member
-            (save-excursion
-              (smie-default-forward-token))
-            (append swift-smie--access-modifier
-                    swift-smie--decl-specifier
-                    ;; swift-mode--fn-decl-keywords is better?
-                    swift-mode--type-decl-keywords '("func")))
-      (smie-default-forward-token))
-    (save-excursion
-      (smie-default-backward-token)))
-
    ((looking-at "\\<default\\>")
     (goto-char (match-end 0)) "case")
 
@@ -361,20 +348,6 @@ We try to constraint those lookups by reasonable number of lines.")
      ((looking-back ">[?!]?" (- (point) 2) t)
       (goto-char (match-beginning 0))
       (if (looking-back "[[:space:]]" 1 t) ">" "T>"))
-
-     ((looking-back (regexp-opt
-                     ;; swift-mode--fn-decl-keywords is better?
-                     (append swift-mode--type-decl-keywords '("func"))) (- (point) 9) t)
-      (goto-char (match-beginning 0))
-      (let ((tok (match-string-no-properties 0)))
-        ;; It should use `member' to avoid partial match
-        (while (string-match-p
-                (concat "\\(" swift-smie--decl-specifier-regexp
-                        "\\|" swift-smie--access-modifier-regexp "\\)")
-                (save-excursion (smie-default-backward-token)))
-          (smie-default-backward-token))
-        tok
-        ))
 
      ((looking-back "\\<default\\>" (- (point) 9) t)
       (goto-char (match-beginning 0)) "case")
@@ -539,11 +512,20 @@ We try to constraint those lookups by reasonable number of lines.")
      )))))
 ;; 165 passed
 ;;(defun swift-smie-rules (kind token) ())
-(defun swift-rule-declaration-p (&rest parents)
+(defun swift-rule-declaration-p ()
   (save-excursion
     (smie-backward-sexp ";")
-    (member (swift-smie--forward-token) parents)
-    ))
+    (member (swift-smie--forward-token)
+            (append swift-smie--access-modifier
+                    swift-smie--decl-specifier
+                    ;; swift-mode--fn-decl-keywords is better?
+                    swift-mode--type-decl-keywords '("func" "@")))))
+
+(defun swift-forward-declaration ()
+  ;; `swift-smie--forward-token' cannot use because of @foo()
+  ;; TODO: exclude comment
+  (re-search-forward
+   (regexp-opt (append swift-mode--type-decl-keywords '("func")))))
 
 (defun swift-smie-rules (kind token)
   (pcase (cons kind token)
@@ -595,10 +577,10 @@ We try to constraint those lookups by reasonable number of lines.")
 
     (`(:after . ":")
      (cond
-      ((and (swift-rule-declaration-p "class" "enum")
+      ((and (swift-rule-declaration-p)
             swift-indent-hanging-comma-offset)
        (smie-rule-parent swift-indent-hanging-comma-offset))
-      ((swift-rule-declaration-p "class" "enum")
+      ((swift-rule-declaration-p)
        swift-indent-offset)
       (t 0)
       ))
@@ -614,15 +596,16 @@ We try to constraint those lookups by reasonable number of lines.")
      (cond
       ;; multi line class inherit
       ((and
-        (swift-rule-declaration-p "class" "case")
+        (swift-rule-declaration-p)
         swift-indent-hanging-comma-offset)
        (smie-rule-parent swift-indent-hanging-comma-offset))
-      ((swift-rule-declaration-p "class" "enum")
+      ((swift-rule-declaration-p)
        ;;swift-indent-offset
        (save-excursion
          (smie-backward-sexp ";")
-         (swift-smie--forward-token)
-         (cons 'column (+ 1 (current-column)))))
+         (swift-forward-declaration)
+         (cons 'column (+ 1 (current-column)))
+         ))
       ((and (smie-rule-hanging-p)
             (smie-rule-parent-p "case")
             swift-indent-hanging-comma-offset)
@@ -633,7 +616,7 @@ We try to constraint those lookups by reasonable number of lines.")
      (cond
       ((smie-rule-prev-p "(") 1)
       ((smie-rule-prev-p ":") (smie-rule-parent))
-      ((swift-rule-declaration-p "class" "enum")
+      ((swift-rule-declaration-p)
         (save-excursion
           (smie-backward-sexp ";")
           (cons 'column (current-column))))

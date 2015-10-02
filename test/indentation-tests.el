@@ -637,6 +637,43 @@ enum Foo: Bar {
 }
 ")
 
+;;https://github.com/chrisbarrett/swift-mode/issues/59
+(check-indentation indents-case-statements-in-enum/5
+  "
+enum Foo {
+case A(Int, [Int : String]), B, C
+                                |func foo() {
+}
+}
+" "
+enum Foo {
+case A(Int, [Int : String]), B, C
+|func foo() {
+}
+}
+")
+
+;; (check-indentation indents-declaration-statements-in-enum/4
+;;   "
+;; enum OrderViewTableTakeAwayCells: Int {
+;; case DeliveryCell = 0,
+;;                     |nameCell = 1,
+;;      emailCell = 2,
+;;      phoneCell = 3,
+;;      couponCodeCell = 4,
+;;      lastCellIndex
+;; }
+;; " "
+;; enum OrderViewTableTakeAwayCells: Int {
+;; case DeliveryCell = 0,
+;;      |nameCell = 1,
+;;      emailCell = 2,
+;;      phoneCell = 3,
+;;      couponCodeCell = 4,
+;;      lastCellIndex
+;; }
+;; ")
+
 (check-indentation indents-declaration-statements-in-enum/1
                    "
 enum Foo: Bar {
@@ -841,6 +878,18 @@ class Foo: Foo,
       Bar,
       Bar2,
       Baz {
+|}
+")
+
+;;https://github.com/chrisbarrett/swift-mode/issues/85
+(check-indentation indents-class-declaration/11
+  "
+@Foo public class Foo {
+     a
+     |}
+" "
+@Foo public class Foo {
+     a
 |}
 ")
 
@@ -1512,6 +1561,20 @@ let x = bar
         .buz() ??
         |defaultValue
 ")
+
+;;https://github.com/chrisbarrett/swift-mode/issues/84
+;; (check-indentation indents-multiline-expressions/24
+;;   "
+;; let foo =
+;;     bar +
+;;   |baz +
+;;   a
+;; " "
+;; let foo =
+;;     bar +
+;;     |baz +
+;;   a
+;; ")
 
 (check-indentation indents-long-parameters/1
                    "
@@ -2252,6 +2315,18 @@ guard let x = y else {
 guard let x = y else {
     |return
 }
+")
+
+;; https://github.com/chrisbarrett/swift-mode/issues/72
+(check-indentation indents-do-while-statement/1
+  "
+do {
+|foo
+} while true
+" "
+do {
+    |foo
+} while true
 ")
 
 (provide 'indentation-tests)
