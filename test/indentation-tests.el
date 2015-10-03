@@ -1562,18 +1562,17 @@ let x = bar
         |defaultValue
 ")
 
-;;https://github.com/chrisbarrett/swift-mode/issues/84
 (check-indentation indents-multiline-expressions/24
   "
 let foo =
     bar +
   |baz +
-  a
+    a
 " "
 let foo =
     bar +
     |baz +
-  a
+    a
 ")
 
 (check-indentation indents-long-parameters/1
