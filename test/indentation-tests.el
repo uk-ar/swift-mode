@@ -638,41 +638,42 @@ enum Foo: Bar {
 ")
 
 ;;https://github.com/chrisbarrett/swift-mode/issues/59
-;; (check-indentation indents-case-statements-in-enum/5
-;;   "
-;; enum Foo {
-;; case A(Int, [Int : String]), B, C
-;;                                 |func foo() {
-;; }
-;; }
-;; " "
-;; enum Foo {
-;; case A(Int, [Int : String]), B, C
-;; |func foo() {
-;; }
-;; }
-;; ")
+(check-indentation indents-case-statements-in-enum/4
+  "
+enum Foo {
+case A(Int, [Int : String]), B, C
+                                |func foo() {
+}
+}
+" "
+enum Foo {
+case A(Int, [Int : String]), B, C
+|func foo() {
+}
+}
+")
 
-;; (check-indentation indents-declaration-statements-in-enum/4
-;;   "
-;; enum OrderViewTableTakeAwayCells: Int {
-;; case DeliveryCell = 0,
-;;                     |nameCell = 1,
-;;      emailCell = 2,
-;;      phoneCell = 3,
-;;      couponCodeCell = 4,
-;;      lastCellIndex
-;; }
-;; " "
-;; enum OrderViewTableTakeAwayCells: Int {
-;; case DeliveryCell = 0,
-;;      |nameCell = 1,
-;;      emailCell = 2,
-;;      phoneCell = 3,
-;;      couponCodeCell = 4,
-;;      lastCellIndex
-;; }
-;; ")
+;;https://github.com/chrisbarrett/swift-mode/issues/59
+(check-indentation indents-declaration-statements-in-enum/5
+  "
+enum OrderViewTableTakeAwayCells: Int {
+case DeliveryCell = 0,
+                    |nameCell = 1,
+     emailCell = 2,
+     phoneCell = 3,
+     couponCodeCell = 4,
+     lastCellIndex
+}
+" "
+enum OrderViewTableTakeAwayCells: Int {
+case DeliveryCell = 0,
+     |nameCell = 1,
+     emailCell = 2,
+     phoneCell = 3,
+     couponCodeCell = 4,
+     lastCellIndex
+}
+")
 
 (check-indentation indents-declaration-statements-in-enum/1
                    "
