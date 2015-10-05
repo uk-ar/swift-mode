@@ -416,6 +416,19 @@ case y:
 }
 ")
 
+(check-indentation indents-case-statement-bodies/7
+  "
+switch x {
+case y,z:
+    |x
+}
+" "
+switch x {
+case y,z:
+    |x
+}
+")
+;;case let (x, y) where x == y:
 
 (check-indentation indents-default-statements-to-same-level-as-enclosing-switch/1
   "

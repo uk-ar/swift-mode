@@ -234,7 +234,7 @@
 
 (defun swift-smie--implicit-semi-p ()
   (save-excursion
-    (not (or (memq (char-before) '(?\{ ?\[ ?, ?. ?: ?= ?\())
+    (not (or (memq (char-before) '(?\{ ?\[ ?,?. ?: ?= ?\( ?\;))
              ;; Checking for operators form for "?" and "!",
              ;; they can be a part of the type.
              ;; Special case: is? and as? are operators.
@@ -521,7 +521,8 @@ We try to constraint those lookups by reasonable number of lines.")
 (defun swift-rule-inside-switch-p ()
   (ignore-errors
     (save-excursion
-      (backward-up-list)
+      (unless (eq (char-after) ?{)
+        (backward-up-list))
       (smie-backward-sexp ";")
       (equal (swift-smie--forward-token) "switch")
       )))
@@ -530,10 +531,9 @@ We try to constraint those lookups by reasonable number of lines.")
   (pcase (cons kind token)
     (`(:elem . basic) swift-indent-offset)
 
-    ;; Indentation rules for switch statements
-    (`(:before . ,(or "case" "default"))
-     (if (swift-rule-inside-switch-p)
-         (smie-rule-parent swift-indent-switch-case-offset)))
+    ;; (`(:before . ,(or "case" "default"))
+    ;;  (if (swift-rule-inside-switch-p)
+    ;;      (smie-rule-parent swift-indent-switch-case-offset)))
 
     ;; Apply swift-indent-multiline-statement-offset only if
     ;; - if is a first token on the line
@@ -577,10 +577,11 @@ We try to constraint those lookups by reasonable number of lines.")
      (cond
       ((and (smie-rule-parent-p "case")
             (swift-rule-inside-switch-p))
-       -1)
-      ((and (smie-rule-parent-p "case")) ;; enum
+       (smie-rule-parent swift-indent-offset))
+      ((and (smie-rule-parent-p "case")
+            (not (swift-rule-inside-switch-p))) ;; enum
        (smie-rule-parent)
-      )))
+       )))
 
     (`(:after . ":")
      (cond
@@ -591,7 +592,7 @@ We try to constraint those lookups by reasonable number of lines.")
        swift-indent-offset)
       ((smie-rule-parent-p "default")
        (smie-rule-parent swift-indent-offset))
-      ((swift-rule-inside-switch-p) -1);; case
+      ((swift-rule-inside-switch-p) -1)
       (t 0)
       ))
 
@@ -633,6 +634,12 @@ We try to constraint those lookups by reasonable number of lines.")
           (cons 'column (current-column))))
       ((smie-rule-hanging-p) (smie-rule-parent))
       ))
+
+    ;; Indentation rules for switch statements
+    (`(:after . ,(or `"{"))
+     (if (swift-rule-inside-switch-p)
+         swift-indent-switch-case-offset
+       swift-indent-offset))
     ))
 
 ;;; Font lock
