@@ -256,7 +256,8 @@
              (and (looking-back swift-smie--operators-regexp (- (point) 3) t)
                   ;; Not a generic type
                   (not (looking-back "[[:upper:]]>" (- (point) 2) t)))
-             ))))
+             )))
+  )
 
 (defun swift-smie--forward-token-debug ()
   (let ((token (swift-smie--forward-token)))
@@ -480,6 +481,7 @@ We try to constraint those lookups by reasonable number of lines.")
     ;; ruby-mode
     '((assoc "case" "default") (assoc ";"))
     '((assoc ",") (right "="))
+    ;;'((nonassoc "{"))
     '((right "?" ":"))
     '((assoc "in") (assoc "->") (assoc "."))
     )
@@ -506,17 +508,23 @@ We try to constraint those lookups by reasonable number of lines.")
 (defun swift-rule-declaration-p ()
   (save-excursion
     (smie-backward-sexp ";")
-    (member (swift-smie--forward-token)
-            (append swift-smie--access-modifier
-                    swift-smie--decl-specifier
-                    ;; swift-mode--fn-decl-keywords is better?
-                    swift-mode--type-decl-keywords '("func" "@")))))
+    (and
+     (not (equal "case" (save-excursion (swift-smie--backward-token))))
+     (member (swift-smie--forward-token)
+             (append swift-smie--access-modifier
+                     swift-smie--decl-specifier
+                     ;; swift-mode--fn-decl-keywords is better?
+                     swift-mode--type-decl-keywords
+                     swift-mode--val-decl-keywords
+                     '("func" "@"))))))
 
 (defun swift-forward-declaration ()
-  ;; `swift-smie--forward-token' cannot use because of @foo()
-  ;; TODO: exclude comment
+  "`swift-smie--forward-token' cannot use because of @foo()
+TODO: exclude comment"
   (re-search-forward
-   (regexp-opt (append swift-mode--type-decl-keywords '("func")))))
+   (regexp-opt (append swift-mode--type-decl-keywords
+                       swift-mode--val-decl-keywords
+                       '("func")))))
 
 (defun swift-rule-inside-switch-p ()
   (ignore-errors
@@ -585,14 +593,21 @@ We try to constraint those lookups by reasonable number of lines.")
 
     (`(:after . ":")
      (cond
+      ((smie-rule-parent-p "=") 0);; FIXME:
       ((and (swift-rule-declaration-p)
+            ;;(apply 'smie-rule-parent-p swift-mode--type-decl-keywords)
             swift-indent-hanging-comma-offset)
        (smie-rule-parent swift-indent-hanging-comma-offset))
-      ((swift-rule-declaration-p)
+      ((and (swift-rule-declaration-p)
+            ;;(apply 'smie-rule-parent-p swift-mode--type-decl-keywords)
+            )
        swift-indent-offset)
       ((smie-rule-parent-p "default")
        (smie-rule-parent swift-indent-offset))
-      ((swift-rule-inside-switch-p) -1)
+      ((swift-rule-inside-switch-p)
+       (smie-backward-sexp "case")
+       (cons 'column (+ swift-indent-offset
+                        (smie-indent-calculate))))
       (t 0)
       ))
 

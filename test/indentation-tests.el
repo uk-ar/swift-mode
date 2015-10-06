@@ -907,6 +907,28 @@ class Foo: Foo,
 |}
 ")
 
+;;https://developer.apple.com/library/prerelease/ios/documentation/Swift/Conceptual/Swift_Programming_Language/Attributes.html#//apple_ref/doc/uid/TP40014097-CH35-ID347
+(check-indentation indents-class-declaration/12
+  "
+@objc
+class ExampleClass: NSObject {
+    var enabled : Bool {
+        |@objc(isEnabled) get {
+            // Return the appropriate value
+        }
+    }
+}
+" "
+@objc
+class ExampleClass: NSObject {
+    var enabled : Bool {
+        |@objc(isEnabled) get {
+            // Return the appropriate value
+        }
+    }
+}
+")
+
 (check-indentation indents-public-class-declaration/1
                    "
 public class Foo: Foo, Bar,
