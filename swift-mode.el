@@ -606,14 +606,10 @@ TODO: exclude comment"
     (`(:after . ":")
      (cond
       ((smie-rule-parent-p "?") nil)
-      ((smie-rule-parent-p "=") 0);; FIXME:
       ((and (swift-rule-declaration-p)
-            ;;(apply 'smie-rule-parent-p swift-mode--type-decl-keywords)
             swift-indent-hanging-comma-offset)
        (smie-rule-parent swift-indent-hanging-comma-offset))
-      ((and (swift-rule-declaration-p)
-            ;;(apply 'smie-rule-parent-p swift-mode--type-decl-keywords)
-            )
+      ((and (swift-rule-declaration-p))
        swift-indent-offset)
       ((smie-rule-parent-p "default")
        (smie-rule-parent swift-indent-offset))
