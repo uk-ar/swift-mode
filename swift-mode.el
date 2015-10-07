@@ -391,7 +391,7 @@ We try to constraint those lookups by reasonable number of lines.")
     ;; Apply swift-indent-multiline-statement-offset if
     ;; operator is the last symbol on the line
     (`(:after . ,(pred (lambda (token)
-                          (member token swift-smie--operators))))
+                         (member token swift-smie--operators))))
      (when (and (smie-rule-hanging-p)
                 (not (apply 'smie-rule-parent-p
                             (append swift-smie--operators '("?" ":" "=")))))
@@ -446,6 +446,7 @@ We try to constraint those lookups by reasonable number of lines.")
       (insts
        (inst)
        (insts ";" insts)
+       ;;(insts "case" exp ":" insts)
        (insts "case" insts)
        (insts "default" insts)
        )
@@ -455,11 +456,12 @@ We try to constraint those lookups by reasonable number of lines.")
       ;; (exp2 (exp3) (exp3 "." exp2))
       (exp (exp1)
            (exp "=" exp)
+           ;;(exp ":" exp)
            (exp "," exp)
            )
       (exp1 (exp2)
-            (exp2 "?" exp2 ":" exp2)
-            (id ":" exp2)
+            ;; (exp2 "?" exp2 ":" exp2)
+            ;; (id ":" exp2)
             )
       (exp2
            ("{" insts "}")
@@ -479,19 +481,24 @@ We try to constraint those lookups by reasonable number of lines.")
     ;; '((assoc "rescue" "ensure"))
     ;; '((assoc ","))
     ;; ruby-mode
-    '((assoc "case" "default") (assoc ";"))
+    '((assoc "case" "default" ":") (assoc ";"))
+    ;; '((assoc "case" ":"))
+    ;; '((assoc "default") (assoc ";"))
     '((assoc ",") (right "="))
     ;;'((nonassoc "{"))
-    '((right "?" ":"))
+    ;;'((right "?" ":"))
     '((assoc "in") (assoc "->") (assoc "."))
     )
+   ;;https://developer.apple.com/library/prerelease/ios/documentation/Swift/Reference/Swift_StandardLibrary_Operators/index.html
   (smie-precs->prec2
    '(
      (right "*=" "/=" "%=" "+=" "-=" "<<=" ">>=" "&="
             "^=" "|=" "&&=" "||=" "=")                       ;; Assignment (Right associative, precedence level 90)
      (nonassoc "func")
+     ;;'((nonassoc "{"))
      (nonassoc "return")
-     (assoc "?")
+     ;;(assoc "?")
+     (assoc "?" ":")
      (left "||")                                             ;; Disjunctive (Left associative, precedence level 110)
      (left "&&")                                             ;; Conjunctive (Left associative, precedence level 120)
      (nonassoc "<" "<=" ">" ">=" "==" "!=" "===" "!==" "~=") ;; Comparative (No associativity, precedence level 130)
@@ -554,7 +561,7 @@ TODO: exclude comment"
     ;; Apply swift-indent-multiline-statement-offset if
     ;; operator is the last symbol on the line
     (`(:after . ,(pred (lambda (token)
-                          (member token swift-smie--operators))))
+                         (member token swift-smie--operators))))
      (when (and (smie-rule-hanging-p)
                 (not (apply 'smie-rule-parent-p
                             (append swift-smie--operators '("?" ":" "=")))))
@@ -568,6 +575,11 @@ TODO: exclude comment"
        (smie-rule-parent)))
 
     ;; custom
+    (`(:before . "return");;FIXME
+     (when (and (smie-rule-parent-p "case")
+                (smie-rule-bolp))
+       (smie-rule-parent swift-indent-offset)))
+
     (`(:after . "->")
      (if (smie-rule-hanging-p)
          (smie-rule-parent swift-indent-offset);;for func foo() -> Bar
@@ -593,6 +605,7 @@ TODO: exclude comment"
 
     (`(:after . ":")
      (cond
+      ((smie-rule-parent-p "?") nil)
       ((smie-rule-parent-p "=") 0);; FIXME:
       ((and (swift-rule-declaration-p)
             ;;(apply 'smie-rule-parent-p swift-mode--type-decl-keywords)
@@ -616,6 +629,7 @@ TODO: exclude comment"
       ((and (smie-rule-parent-p "class" "enum")
             swift-indent-hanging-comma-offset)
        (smie-rule-parent swift-indent-hanging-comma-offset))
+      ((smie-rule-parent-p "?") 0)
       ))
 
     (`(:after . ",")
