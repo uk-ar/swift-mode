@@ -573,14 +573,8 @@ We try to constraint those lookups by reasonable number of lines.")
          (smie-rule-parent swift-indent-offset)
        (smie-rule-parent)))
 
+    (`(:after . "->") (smie-rule-parent swift-indent-offset))
     ;; custom
-    (`(:after . "->")
-     ;;(if (smie-rule-hanging-p)
-         (smie-rule-parent swift-indent-offset);;for func foo() -> Bar
-       ;;(smie-rule-parent)
-         )
-    ;;)
-
     (`(:after . "=")
      (when (smie-rule-hanging-p) swift-indent-offset))
 
@@ -619,10 +613,10 @@ We try to constraint those lookups by reasonable number of lines.")
 
     (`(:before . ":")
      (cond
-      ((and (smie-rule-parent-p "class" "enum")
-            swift-indent-hanging-comma-offset)
-       (smie-rule-parent swift-indent-hanging-comma-offset))
       ((smie-rule-parent-p "?") 0)
+      ;; ((and (smie-rule-parent-p "class" "enum")
+      ;;       swift-indent-hanging-comma-offset)
+      ;;  (smie-rule-parent swift-indent-hanging-comma-offset))
       ))
 
     (`(:after . ",")
