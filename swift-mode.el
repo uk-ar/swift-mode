@@ -502,9 +502,8 @@ We try to constraint those lookups by reasonable number of lines.")
      (right "*=" "/=" "%=" "+=" "-=" "<<=" ">>=" "&="
             "^=" "|=" "&&=" "||=" "=")                       ;; Assignment (Right associative, precedence level 90)
      ;;'((nonassoc "{"))
-     (nonassoc "return")
      ;;(assoc "?")
-     (assoc "?" ":")
+     (right "?" ":" "return")
      (left "||")                                             ;; Disjunctive (Left associative, precedence level 110)
      (left "&&")                                             ;; Conjunctive (Left associative, precedence level 120)
      (nonassoc "<" "<=" ">" ">=" "==" "!=" "===" "!==" "~=") ;; Comparative (No associativity, precedence level 130)
@@ -581,11 +580,6 @@ TODO: exclude comment"
        (smie-rule-parent)))
 
     ;; custom
-    (`(:before . "return");;FIXME
-     (when (and (smie-rule-parent-p "case")
-                (smie-rule-bolp))
-       (smie-rule-parent swift-indent-offset)))
-
     (`(:after . "->")
      (if (smie-rule-hanging-p)
          (smie-rule-parent swift-indent-offset);;for func foo() -> Bar
@@ -636,19 +630,6 @@ TODO: exclude comment"
 
     (`(:after . ",")
      (cond
-      ;; multi line class inherit
-      ((and
-        (swift-rule-declaration-p);; cannot remove?
-        swift-indent-hanging-comma-offset)
-       ;;(smie-rule-parent )
-       swift-indent-hanging-comma-offset)
-      ((swift-rule-declaration-p)
-       ;;swift-indent-offset
-       (save-excursion
-         (smie-backward-sexp ";")
-         (swift-forward-declaration)
-         (cons 'column (+ 1 (current-column)))
-         ))
       ((and (smie-rule-hanging-p)
             (smie-rule-parent-p "case")
             swift-indent-hanging-comma-offset)
@@ -661,7 +642,7 @@ TODO: exclude comment"
      (when
          (and (smie-rule-parent-p "class")
               swift-indent-hanging-comma-offset)
-       (smie-rule-parent)))
+       (smie-rule-parent swift-indent-hanging-comma-offset)))
 
     (`(:before . ,(or `"{"));;
      (cond
