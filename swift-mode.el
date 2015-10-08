@@ -455,16 +455,16 @@ We try to constraint those lookups by reasonable number of lines.")
       ;; (exp1 (exp2) (exp2 "?" exp1 ":" exp1))
       ;; (exp2 (exp3) (exp3 "." exp2))
       (exp (exp1)
-           (exp "=" exp)
-           ;;(exp ":" exp)
+           ;; ;;(exp ":" exp)
            (exp "," exp)
            )
       (exp1 (exp2)
+            (exp1 "=" exp1)
             ;; (exp2 "?" exp2 ":" exp2)
             ;; (id ":" exp2)
             )
       (exp2
-           ("{" insts "}")
+       ;;("{" insts "}")
            ("(" exp ")")
            ("<T" exp "T>")
            (exp2 "in" exp2)
@@ -481,10 +481,11 @@ We try to constraint those lookups by reasonable number of lines.")
     ;; '((assoc "rescue" "ensure"))
     ;; '((assoc ","))
     ;; ruby-mode
-    '((assoc "case" "default" ":") (assoc ";"))
+    '((assoc "case" "default") (assoc ";"))
     ;; '((assoc "case" ":"))
     ;; '((assoc "default") (assoc ";"))
     '((assoc ",") (right "="))
+    '((right "="))
     ;;'((nonassoc "{"))
     ;;'((right "?" ":"))
     '((assoc "in") (assoc "->") (assoc "."))
@@ -492,9 +493,14 @@ We try to constraint those lookups by reasonable number of lines.")
    ;;https://developer.apple.com/library/prerelease/ios/documentation/Swift/Reference/Swift_StandardLibrary_Operators/index.html
   (smie-precs->prec2
    '(
+     ;;(noassoc "{" "}")
+     ;;(right "func" "class" "{");;"default"  "}"
+     (assoc ";")
+     (assoc "class" "func" "{")
+     ;; (assoc "case")
+     (assoc ",")
      (right "*=" "/=" "%=" "+=" "-=" "<<=" ">>=" "&="
             "^=" "|=" "&&=" "||=" "=")                       ;; Assignment (Right associative, precedence level 90)
-     (nonassoc "func")
      ;;'((nonassoc "{"))
      (nonassoc "return")
      ;;(assoc "?")
@@ -610,7 +616,7 @@ TODO: exclude comment"
             swift-indent-hanging-comma-offset)
        (smie-rule-parent swift-indent-hanging-comma-offset))
       ((and (swift-rule-declaration-p))
-       swift-indent-offset)
+       (smie-rule-parent swift-indent-offset))
       ((smie-rule-parent-p "default")
        (smie-rule-parent swift-indent-offset))
       ((swift-rule-inside-switch-p)
@@ -632,9 +638,10 @@ TODO: exclude comment"
      (cond
       ;; multi line class inherit
       ((and
-        (swift-rule-declaration-p)
+        (swift-rule-declaration-p);; cannot remove?
         swift-indent-hanging-comma-offset)
-       (smie-rule-parent swift-indent-hanging-comma-offset))
+       ;;(smie-rule-parent )
+       swift-indent-hanging-comma-offset)
       ((swift-rule-declaration-p)
        ;;swift-indent-offset
        (save-excursion
@@ -647,7 +654,14 @@ TODO: exclude comment"
             swift-indent-hanging-comma-offset)
        ;;(smie-rule-parent swift-indent-offset)
        (smie-rule-parent swift-indent-hanging-comma-offset))
-      ))
+      )
+     )
+
+    (`(:before . ",")
+     (when
+         (and (smie-rule-parent-p "class")
+              swift-indent-hanging-comma-offset)
+       (smie-rule-parent)))
 
     (`(:before . ,(or `"{"));;
      (cond
