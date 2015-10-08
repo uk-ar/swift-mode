@@ -465,7 +465,7 @@ We try to constraint those lookups by reasonable number of lines.")
             )
       (exp2
        ;;("{" insts "}")
-           ("(" exp ")")
+       ;;("(" exp ")")
            ("<T" exp "T>")
            (exp2 "in" exp2)
            (exp2 "->" exp2)
@@ -496,7 +496,7 @@ We try to constraint those lookups by reasonable number of lines.")
      ;;(noassoc "{" "}")
      ;;(right "func" "class" "{");;"default"  "}"
      (assoc ";")
-     (assoc "class" "func" "{")
+     (assoc "class" "func")
      ;; (assoc "case")
      (assoc ",")
      (right "*=" "/=" "%=" "+=" "-=" "<<=" ">>=" "&="
@@ -516,7 +516,9 @@ We try to constraint those lookups by reasonable number of lines.")
      ;;(assoc "func")
      )))))
 ;; 165 passed
+
 ;;(defun swift-smie-rules (kind token) ())
+;;(defun swift-smie--implicit-semi-p () nil)
 (defun swift-rule-declaration-p ()
   (save-excursion
     (smie-backward-sexp ";")
@@ -529,14 +531,6 @@ We try to constraint those lookups by reasonable number of lines.")
                      swift-mode--type-decl-keywords
                      swift-mode--val-decl-keywords
                      '("func" "@"))))))
-
-(defun swift-forward-declaration ()
-  "`swift-smie--forward-token' cannot use because of @foo()
-TODO: exclude comment"
-  (re-search-forward
-   (regexp-opt (append swift-mode--type-decl-keywords
-                       swift-mode--val-decl-keywords
-                       '("func")))))
 
 (defun swift-rule-inside-switch-p ()
   (ignore-errors
@@ -581,9 +575,11 @@ TODO: exclude comment"
 
     ;; custom
     (`(:after . "->")
-     (if (smie-rule-hanging-p)
+     ;;(if (smie-rule-hanging-p)
          (smie-rule-parent swift-indent-offset);;for func foo() -> Bar
-       (smie-rule-parent)))
+       ;;(smie-rule-parent)
+         )
+    ;;)
 
     (`(:after . "=")
      (when (smie-rule-hanging-p) swift-indent-offset))
@@ -591,7 +587,8 @@ TODO: exclude comment"
     (`(:after . "(") (smie-rule-parent swift-indent-offset))
     (`(:before . "(")
      (unless (smie-rule-parent-p "func")
-       (smie-rule-parent)))
+       (smie-rule-parent) ;; virtual indent for ")"
+     ))
 
     (`(:after . ";")
      (cond
@@ -600,8 +597,8 @@ TODO: exclude comment"
        (smie-rule-parent swift-indent-offset))
       ((and (smie-rule-parent-p "case")
             (not (swift-rule-inside-switch-p))) ;; enum
-       (smie-rule-parent)
-       )))
+       (smie-rule-parent))
+      ))
 
     (`(:after . ":")
      (cond
