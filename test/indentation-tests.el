@@ -89,8 +89,9 @@ values of customisable variables."
            (while (< 0 (skip-syntax-forward "^)"))
              (unless (eobp) (forward-char 1))
              ;; should not mismatch
-             (should (eq (blink-matching-open) nil)))
-           )))))
+             (should (eq (blink-matching-open) nil))
+             (should (eq (show-paren-function) 'show-paren-match))
+             ))))))
 
 ;; Provide font locking for easier test editing.
 
