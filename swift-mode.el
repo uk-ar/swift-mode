@@ -302,8 +302,8 @@ We try to constraint those lookups by reasonable number of lines.")
     (goto-char (match-end 0))
     (if (looking-back "[[:space:]]>" 2 t) ">" "T>"))
 
-   ;; ((looking-at "\\<default\\>")
-   ;;  (goto-char (match-end 0)) "case")
+   ((looking-at "\\<default\\>")
+    (goto-char (match-end 0)) "case")
 
    ((looking-at "else if")
     (goto-char (match-end 0)) "elseif")
@@ -338,8 +338,8 @@ We try to constraint those lookups by reasonable number of lines.")
       (goto-char (match-beginning 0))
       (if (looking-back "[[:space:]]" 1 t) ">" "T>"))
 
-     ;; ((looking-back "\\<default\\>" (- (point) 9) t)
-     ;;  (goto-char (match-beginning 0)) "case")
+     ((looking-back "\\<default\\>" (- (point) 9) t)
+      (goto-char (match-beginning 0)) "case")
 
      ((looking-back "else if" (- (point) 7) t)
       (goto-char (match-beginning 0)) "elseif")
@@ -366,19 +366,13 @@ We try to constraint those lookups by reasonable number of lines.")
       ((smie-rule-parent-p "=") 2)
       ((smie-rule-parent-p ",") (smie-rule-parent swift-indent-offset))
       ;; Rule for the class definition.
-      ((smie-rule-parent-p "class") (smie-rule-parent swift-indent-offset))
-      ;; After is better?
-      ((smie-rule-parent-p "case") (smie-rule-parent swift-indent-offset))
-      ))
-
-    (`(:after . ";")
-     (when (smie-rule-parent-p "case") -1))
+      ((smie-rule-parent-p "class") (smie-rule-parent swift-indent-offset))))
 
     ;; Indentation rules for switch statements
     (`(:before . "case")
      (if (smie-rule-parent-p "{")
          (smie-rule-parent swift-indent-switch-case-offset)))
-    ;;(`(:before . "case-:") (smie-rule-parent swift-indent-offset))
+    (`(:before . "case-:") (smie-rule-parent swift-indent-offset))
 
     ;; Apply swift-indent-multiline-statement-offset only if
     ;; - if is a first token on the line
@@ -391,7 +385,7 @@ We try to constraint those lookups by reasonable number of lines.")
     ;; Apply swift-indent-multiline-statement-offset if
     ;; operator is the last symbol on the line
     (`(:after . ,(pred (lambda (token)
-                         (member token swift-smie--operators))))
+                          (member token swift-smie--operators))))
      (when (and (smie-rule-hanging-p)
                 (not (apply 'smie-rule-parent-p
                             (append swift-smie--operators '("?" ":" "=")))))
@@ -448,7 +442,6 @@ We try to constraint those lookups by reasonable number of lines.")
        (insts ";" insts)
        ;;(insts "case" exp ":" insts)
        (insts "case" insts)
-       (insts "default" insts)
        )
       ;; (exp  (exp1) (exp "," exp) (exp "=" exp)
       ;;       (id " @ " exp))
@@ -481,7 +474,7 @@ We try to constraint those lookups by reasonable number of lines.")
     ;; '((assoc "rescue" "ensure"))
     ;; '((assoc ","))
     ;; ruby-mode
-    '((assoc "case" "default") (assoc ";"))
+    '((assoc "case") (assoc ";"))
     ;; '((assoc "case" ":"))
     ;; '((assoc "default") (assoc ";"))
     '((assoc ",") (right "="))
@@ -544,7 +537,6 @@ We try to constraint those lookups by reasonable number of lines.")
 (defun swift-smie-rules (kind token)
   (pcase (cons kind token)
     (`(:elem . basic) swift-indent-offset)
-
     ;; (`(:before . ,(or "case" "default"))
     ;;  (if (swift-rule-inside-switch-p)
     ;;      (smie-rule-parent swift-indent-switch-case-offset)))
@@ -602,10 +594,9 @@ We try to constraint those lookups by reasonable number of lines.")
        (smie-rule-parent swift-indent-hanging-comma-offset))
       ((and (swift-rule-declaration-p))
        (smie-rule-parent swift-indent-offset))
-      ((smie-rule-parent-p "default")
-       (smie-rule-parent swift-indent-offset))
       ((swift-rule-inside-switch-p)
        (smie-backward-sexp "case")
+       (swift-smie--backward-token)
        (cons 'column (+ swift-indent-offset
                         (smie-indent-calculate))))
       (t 0)
@@ -614,9 +605,6 @@ We try to constraint those lookups by reasonable number of lines.")
     (`(:before . ":")
      (cond
       ((smie-rule-parent-p "?") 0)
-      ;; ((and (smie-rule-parent-p "class" "enum")
-      ;;       swift-indent-hanging-comma-offset)
-      ;;  (smie-rule-parent swift-indent-hanging-comma-offset))
       ))
 
     (`(:after . ",")
