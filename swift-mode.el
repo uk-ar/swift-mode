@@ -537,9 +537,12 @@ We try to constraint those lookups by reasonable number of lines.")
 (defun swift-smie-rules (kind token)
   (pcase (cons kind token)
     (`(:elem . basic) swift-indent-offset)
-    ;; (`(:before . ,(or "case" "default"))
-    ;;  (if (swift-rule-inside-switch-p)
-    ;;      (smie-rule-parent swift-indent-switch-case-offset)))
+
+    ;; Indentation rules for switch statements
+    (`(:before . "case")
+     (if (and (swift-rule-inside-switch-p) (smie-rule-bolp))
+         (smie-rule-parent swift-indent-switch-case-offset)))
+    (`(:before . "case-:") (smie-rule-parent swift-indent-offset))
 
     ;; Apply swift-indent-multiline-statement-offset only if
     ;; - if is a first token on the line
@@ -559,22 +562,46 @@ We try to constraint those lookups by reasonable number of lines.")
        swift-indent-multiline-statement-offset
        ))
 
+    (`(:before . ",")
+     (if (and swift-indent-hanging-comma-offset (smie-rule-parent-p "class" "case"))
+         (smie-rule-parent swift-indent-hanging-comma-offset)))
+
+    ;; Disable unnecessary default indentation for
+    ;; "func" and "class" keywords
+    (`(:after . ,(or `"func" `"class")) (smie-rule-parent))
+
     ;; "in" token in closure
     (`(:after . "in")
      (if (smie-rule-parent-p "{")
          (smie-rule-parent swift-indent-offset)
        (smie-rule-parent)))
 
+    (`(:after . "(")
+     (cond
+      ((smie-rule-parent-p "(") 0)
+      ((and (smie-rule-parent-p "." "func")
+            (not (smie-rule-hanging-p))) 1)
+      (t (smie-rule-parent swift-indent-offset))))
+
+    (`(:before . "(")
+     (cond
+      ((smie-rule-next-p "[") (smie-rule-parent))
+      ;; Custom indentation for method arguments
+      ((smie-rule-parent-p ".") (smie-rule-parent))
+      ((smie-rule-parent-p "func") nil)))
+
+    (`(:before . "[")
+     (cond
+      ((smie-rule-prev-p "->") swift-indent-offset)
+      ((smie-rule-parent-p "[") (smie-rule-parent swift-indent-offset))
+      ((smie-rule-parent-p "{") nil)
+      ((smie-rule-parent-p "class-{") nil)
+      (t (smie-rule-parent))))
+
     (`(:after . "->") (smie-rule-parent swift-indent-offset))
     ;; custom
     (`(:after . "=")
      (when (smie-rule-hanging-p) swift-indent-offset))
-
-    (`(:after . "(") (smie-rule-parent swift-indent-offset))
-    (`(:before . "(")
-     (unless (smie-rule-parent-p "func")
-       (smie-rule-parent) ;; virtual indent for ")"
-     ))
 
     (`(:after . ";")
      (cond
@@ -607,22 +634,6 @@ We try to constraint those lookups by reasonable number of lines.")
       ((smie-rule-parent-p "?") 0)
       ))
 
-    (`(:after . ",")
-     (cond
-      ((and (smie-rule-hanging-p)
-            (smie-rule-parent-p "case")
-            swift-indent-hanging-comma-offset)
-       ;;(smie-rule-parent swift-indent-offset)
-       (smie-rule-parent swift-indent-hanging-comma-offset))
-      )
-     )
-
-    (`(:before . ",")
-     (when
-         (and (smie-rule-parent-p "class")
-              swift-indent-hanging-comma-offset)
-       (smie-rule-parent swift-indent-hanging-comma-offset)))
-
     (`(:before . ,(or `"{"));;
      (cond
       ((smie-rule-prev-p "(") 1)
@@ -633,12 +644,6 @@ We try to constraint those lookups by reasonable number of lines.")
           (cons 'column (current-column))))
       ((smie-rule-hanging-p) (smie-rule-parent))
       ))
-
-    ;; Indentation rules for switch statements
-    (`(:after . ,(or `"{"))
-     (if (swift-rule-inside-switch-p)
-         swift-indent-switch-case-offset
-       swift-indent-offset))
     ))
 
 ;;; Font lock
